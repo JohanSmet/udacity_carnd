@@ -8,10 +8,10 @@ My pipeline consits of 5 steps:
 1. convert the image to grayscale
 2. apply a guassian blur filter to smooth the images
 3. run Canny edge detection pass
-4. mask an appropriate region of interest
+4. mask an appropriate region of interest&
 5. run Hough line detection
 
-[image1]: ./test_images_output/solidYellowCurve.jpg "Example result"
+![image1](./test_images_output/solidYellowCurve.jpg "Example result")
 
 In order to draw a single line on the left and right lanes, I modified the draw_lines() function to sort the lines by their slopes. Lines with a slope between -0.9 and -0.4 are classified as the left edge and lines with a slope between 0.4 and 0.9 are classified as the right edge. Lines with other slopes are ignored.
 
