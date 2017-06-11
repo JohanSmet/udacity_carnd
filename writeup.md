@@ -37,7 +37,7 @@ Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/4
 
 ###### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one. You can submit your writeup as markdown or pdf. You can use this template as a guide for writing the report. The submission includes the project code.
 
-You're reading it! and here is a link to my [project code](https://github.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/blob/master/Traffic_Sign_Classifier.ipynb) and the [html export](https://cdn.rawgit.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/6565d497/report.html) of the Jupyter Notebook.
+You're reading it! and here is a link to my [project code](https://github.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/blob/master/Traffic_Sign_Classifier.ipynb) and the [html export](https://cdn.rawgit.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/1e21fbc3/report.html) of the Jupyter Notebook.
 
 ### Data Set Summary & Exploration
 
@@ -143,7 +143,7 @@ Here are five German traffic signs that I found on the web:
 Here are the results of the prediction:
 
 | Image			        |     Prediction	        					|  |
-|:---------------------:|:---------------------------------------------:|
+|:---------------------:|:---------------------------------------------:|:---:|
 | Speed limit 70 km/h | Speed limit 70 km/h | Correct |
 | Priority Road | Priority Road | Correct |
 | No Eentry | No Eentry | Correct |
