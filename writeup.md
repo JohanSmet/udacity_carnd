@@ -37,7 +37,7 @@ Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/4
 
 ###### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one. You can submit your writeup as markdown or pdf. You can use this template as a guide for writing the report. The submission includes the project code.
 
-You're reading it! and here is a link to my [project code](https://github.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/blob/master/Traffic_Sign_Classifier.ipynb) and the [html export](https://cdn.rawgit.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/1e21fbc3/report.html) of the Jupyter Notebook.
+You're reading it! and here is a link to my [project code](https://github.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/blob/master/Traffic_Sign_Classifier.ipynb) and the [html export](https://cdn.rawgit.com/JohanSmet/CarND-Traffic-Sign-Classifier-Project/d9ce8039/report.html) of the Jupyter Notebook.
 
 ### Data Set Summary & Exploration
 
@@ -150,7 +150,7 @@ Here are the results of the prediction:
 | Bumpy Road | Bumpy Road | Correct |
 | Road Work | Road Work | Correct |
 
-The model was able to correctly guess the 5 traffic signs, which gives an accuracy of 100%.
+The model was able to correctly guess the 5 traffic signs, which gives an accuracy of 100%.  The accuracy was 96.3% on the testing set thus the model does not seem to be overfitting. Although with only five samples we could just have been lucky. A more exhaustive test would be required to make a more definitive statement.
 
 ###### 3. Describe how certain the model is when predicting on each of the five new images by looking at the softmax probabilities for each prediction. Provide the top 5 softmax probabilities for each image along with the sign type of each probability. (OPTIONAL: as described in the "Stand Out Suggestions" part of the rubric, visualizations can also be provided such as bar charts)
 
