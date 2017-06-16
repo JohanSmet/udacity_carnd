@@ -12,6 +12,9 @@ from keras import callbacks
 
 STEERING_CORRECTION = 0.2
 
+def mirror_image(img):
+    return np.fliplr(img)
+
 def generator(samples, batch_size=64):
     n_samples = len(samples)
 
@@ -21,11 +24,13 @@ def generator(samples, batch_size=64):
     while True:
         shuffle(samples)
 
-        for idx in range(0, n_samples, batch_size):
+        for idx in range(0, n_samples, batch_size//2):
 
-            for batch_idx, sample in enumerate(samples[idx:idx+batch_size]):
+            for batch_idx, sample in enumerate(samples[idx:idx+batch_size//2]):
                 X_batch[batch_idx] = cv2.imread(sample[0])
                 y_batch[batch_idx] = float(sample[1])
+                X_batch[batch_idx*2+1] = mirror_image(cv2.imread(sample[0]))
+                y_batch[batch_idx*2+1] = -float(sample[1])
             
             yield (X_batch, y_batch)
 
@@ -55,7 +60,7 @@ class DataSet:
             data.append((self.fix_image_path(path, row['right']), row['steering'] - STEERING_CORRECTION))
     
         # split dataset into training and validation data
-        self.data_train, self.data_validate = train_test_split(data[:200], test_size=test_size)
+        self.data_train, self.data_validate = train_test_split(data, test_size=test_size)
 
     def fix_image_path(self, path, img):
         return path + '/IMG/' + img.split('/')[-1]
@@ -82,10 +87,10 @@ class NvidiaModel:
         self.model.compile(loss='mse', optimizer='adam')
 
     def train(self, dataset):
-        self.model.fit_generator(dataset.generator_train, samples_per_epoch=len(dataset.data_train), 
-                                 validation_data=dataset.generator_valid, nb_val_samples=len(dataset.data_validate), 
+        self.model.fit_generator(dataset.generator_train, samples_per_epoch=len(dataset.data_train)*2, 
+                                 validation_data=dataset.generator_valid, nb_val_samples=len(dataset.data_validate)*2, 
                                  callbacks=[self.tensorboard],
-                                 nb_epoch=3)
+                                 nb_epoch=5)
 
     def save(self):
         self.model.save('model.h5')
