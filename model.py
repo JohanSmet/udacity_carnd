@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 
 import cv2
 
-from keras.layers import Flatten, Dense, Conv2D, Lambda, MaxPooling2D
+from keras.layers import Flatten, Dense, Conv2D, Lambda, AveragePooling2D, Dropout
 from keras.models import Sequential
 from keras import callbacks
 
@@ -71,13 +71,14 @@ class NvidiaModel:
         self.tensorboard = callbacks.TensorBoard(log_dir='./logs', histogram_freq=10, write_graph=True, write_images=True)
 
         self.model = Sequential()
-        self.model.add(MaxPooling2D(pool_size=(2,2), input_shape=(160,320,3)))
+        self.model.add(AveragePooling2D((1,2), input_shape=(160,320,3)))
         self.model.add(Lambda(lambda x : (x / 255.0) - 0.5))
         self.model.add(Conv2D(24, 5, 5, subsample=(2,2), activation='relu'))
         self.model.add(Conv2D(36, 5, 5, subsample=(2,2), activation='relu'))
         self.model.add(Conv2D(48, 5, 5, subsample=(2,2), activation='relu'))
         self.model.add(Conv2D(64, 3, 3, activation='relu'))
         self.model.add(Conv2D(64, 3, 3, activation='relu'))
+        self.model.add(Dropout(0.2))
         self.model.add(Flatten())
         self.model.add(Dense(100))
         self.model.add(Dense(50))
