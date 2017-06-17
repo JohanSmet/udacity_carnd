@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+import argparse
+import os.path
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
@@ -11,6 +13,10 @@ from keras.models import Sequential
 from keras import callbacks
 
 STEERING_CORRECTION = 0.2
+COL_CENTER = 0
+COL_LEFT = 1
+COL_RIGHT = 2
+COL_STEERING = 3
 
 def mirror_image(img):
     return np.fliplr(img)
@@ -51,19 +57,20 @@ class DataSet:
     def load_data(self, path, test_size=0.2):
         # load data from CSV
         data = []
-        csv = pd.read_csv(path + '/driving_log.csv')
+        csv = pd.read_csv(path + '/driving_log.csv', header=None)
 
         # save the data for each camera as individual samples
         for _, row in csv.iterrows():
-            data.append((self.fix_image_path(path, row['center']), row['steering']))
-            data.append((self.fix_image_path(path, row['left']), row['steering'] + STEERING_CORRECTION))
-            data.append((self.fix_image_path(path, row['right']), row['steering'] - STEERING_CORRECTION))
+            if row[COL_CENTER].endswith('.jpg'):
+                data.append((self.fix_image_path(path, row[COL_CENTER]), float(row[COL_STEERING])))
+                data.append((self.fix_image_path(path, row[COL_LEFT]), float(row[COL_STEERING]) + STEERING_CORRECTION))
+                data.append((self.fix_image_path(path, row[COL_RIGHT]), float(row[COL_STEERING]) - STEERING_CORRECTION))
     
         # split dataset into training and validation data
         self.data_train, self.data_validate = train_test_split(data, test_size=test_size)
 
     def fix_image_path(self, path, img):
-        return path + '/IMG/' + img.split('/')[-1]
+        return path + '/IMG/' + os.path.basename(img)
 
 
 class NvidiaModel:
