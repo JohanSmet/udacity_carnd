@@ -7,7 +7,7 @@ import os.path
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
-import cv2
+import matplotlib.image as mpimg
 
 from keras.layers import Flatten, Dense, Conv2D, Lambda, AveragePooling2D, Dropout, Cropping2D
 from keras.models import Sequential
@@ -33,14 +33,20 @@ def generator(samples, batch_size=64):
         shuffle(samples)
 
         for idx in range(0, n_samples, batch_size//2):
-
-            for batch_idx, sample in enumerate(samples[idx:idx+batch_size//2]):
-                X_batch[batch_idx] = cv2.imread(sample[0])
-                y_batch[batch_idx] = float(sample[1])
-                X_batch[batch_idx*2+1] = mirror_image(cv2.imread(sample[0]))
-                y_batch[batch_idx*2+1] = -float(sample[1])
             
-            yield (X_batch, y_batch)
+            batch_idx = 0
+
+            for sample in samples[idx:idx+batch_size//2]:
+                image = mpimg.imread(sample[0])
+                
+                X_batch[batch_idx] = image
+                y_batch[batch_idx] = float(sample[1])
+                batch_idx += 1
+                X_batch[batch_idx] = mirror_image(image)
+                y_batch[batch_idx] = -float(sample[1])
+                batch_idx += 1
+            
+            yield (X_batch[0:batch_idx,:,:,:], y_batch[0:batch_idx])
 
         # end for
 
