@@ -3,6 +3,7 @@ import numpy as np
 
 import argparse
 import os.path
+import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -53,29 +54,35 @@ def generator(samples, batch_size=64):
     # end while
 
 class DataSet:
-    def __init__(self, path):
-        self.load_data(path)
+    def __init__(self, path, test_size=0.2):
+        # get all subdirectories containing driving data
+        data_dirs = [root for root, dirs, files in os.walk(path) if 'driving_log.csv' in files]
         
+        # load data from all directories
+        self.data = []
+        
+        for dir in data_dirs:
+           self.load_data(dir)
+
+        # split dataset into training and validation data
+        self.data_train, self.data_validate = train_test_split(self.data, test_size=test_size)
         print('Training set size : {}'.format(len(self.data_train)))
         print('Validation set size : {}'.format(len(self.data_validate)))
 
+        # create the generators
         self.generator_train = generator(self.data_train)
         self.generator_valid = generator(self.data_validate)
 
-    def load_data(self, path, test_size=0.2):
+    def load_data(self, path):
         # load data from CSV
-        data = []
         csv = pd.read_csv(path + '/driving_log.csv', header=None)
 
         # save the data for each camera as individual samples
         for _, row in csv.iterrows():
             if row[COL_CENTER].endswith('.jpg'):
-                data.append((self.fix_image_path(path, row[COL_CENTER]), float(row[COL_STEERING])))
-                data.append((self.fix_image_path(path, row[COL_LEFT]), float(row[COL_STEERING]) + STEERING_CORRECTION))
-                data.append((self.fix_image_path(path, row[COL_RIGHT]), float(row[COL_STEERING]) - STEERING_CORRECTION))
-    
-        # split dataset into training and validation data
-        self.data_train, self.data_validate = train_test_split(data, test_size=test_size)
+                self.data.append((self.fix_image_path(path, row[COL_CENTER]), float(row[COL_STEERING])))
+                self.data.append((self.fix_image_path(path, row[COL_LEFT]), float(row[COL_STEERING]) + STEERING_CORRECTION))
+                self.data.append((self.fix_image_path(path, row[COL_RIGHT]), float(row[COL_STEERING]) - STEERING_CORRECTION))
 
     def fix_image_path(self, path, img):
         return path + '/IMG/' + os.path.basename(img)
