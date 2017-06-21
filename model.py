@@ -99,6 +99,7 @@ class NvidiaModel:
             self.model.add(Cropping2D(cropping=((60,20),(0,0)), input_shape=(160,320,3)))
             self.model.add(AveragePooling2D((1,2)))
             self.model.add(Lambda(lambda x : (x / 255.0) - 0.5))
+            self.model.add(Conv2D(3, 1, 1, border_mode='same'))                     # color space selection
             self.model.add(Conv2D(24, 5, 5, subsample=(2,2), activation='relu'))
             self.model.add(Conv2D(36, 5, 5, subsample=(2,2), activation='relu'))
             self.model.add(Conv2D(48, 5, 5, subsample=(2,2), activation='relu'))
