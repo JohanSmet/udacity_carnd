@@ -9,7 +9,7 @@ from sklearn.utils import shuffle
 
 import cv2
 
-from keras.layers import Flatten, Dense, Conv2D, Lambda, AveragePooling2D, Dropout
+from keras.layers import Flatten, Dense, Conv2D, Lambda, AveragePooling2D, Dropout, Cropping2D
 from keras.models import Sequential
 from keras.models import load_model
 from keras import callbacks
@@ -83,7 +83,8 @@ class NvidiaModel:
             self.model = load_model('model.h5')
         else:
             self.model = Sequential()
-            self.model.add(AveragePooling2D((1,2), input_shape=(160,320,3)))
+            self.model.add(Cropping2D(cropping=((60,20),(0,0)), input_shape=(160,320,3)))
+            self.model.add(AveragePooling2D((1,2)))
             self.model.add(Lambda(lambda x : (x / 255.0) - 0.5))
             self.model.add(Conv2D(24, 5, 5, subsample=(2,2), activation='relu'))
             self.model.add(Conv2D(36, 5, 5, subsample=(2,2), activation='relu'))
