@@ -21,38 +21,6 @@ COL_LEFT = 1
 COL_RIGHT = 2
 COL_STEERING = 3
 
-def mirror_image(img):
-    return np.fliplr(img)
-
-def generator(samples, batch_size=64):
-    n_samples = len(samples)
-
-    X_batch = np.zeros((batch_size, 160, 320, 3), dtype=np.float32)
-    y_batch = np.zeros((batch_size,), dtype=np.float32)
-
-    while True:
-        shuffle(samples)
-
-        for idx in range(0, n_samples, batch_size//2):
-            
-            batch_idx = 0
-
-            for sample in samples[idx:idx+batch_size//2]:
-                image = mpimg.imread(sample[0])
-                
-                X_batch[batch_idx] = image
-                y_batch[batch_idx] = float(sample[1])
-                batch_idx += 1
-                X_batch[batch_idx] = mirror_image(image)
-                y_batch[batch_idx] = -float(sample[1])
-                batch_idx += 1
-            
-            yield (X_batch[0:batch_idx,:,:,:], y_batch[0:batch_idx])
-
-        # end for
-
-    # end while
-
 class DataSet:
     def __init__(self, path, test_size=0.2):
         # get all subdirectories containing driving data
@@ -70,8 +38,8 @@ class DataSet:
         print('Validation set size : {}'.format(len(self.data_validate)))
 
         # create the generators
-        self.generator_train = generator(self.data_train)
-        self.generator_valid = generator(self.data_validate)
+        self.generator_train = self.data_generator(self.data_train)
+        self.generator_valid = self.data_generator(self.data_validate)
 
     def load_data(self, path):
         # load data from CSV
@@ -84,17 +52,62 @@ class DataSet:
                 self.data.append((self.fix_image_path(path, row[COL_LEFT]), float(row[COL_STEERING]) + STEERING_CORRECTION))
                 self.data.append((self.fix_image_path(path, row[COL_RIGHT]), float(row[COL_STEERING]) - STEERING_CORRECTION))
 
+    def data_generator(self, samples, batch_size=64):
+        n_samples  = len(samples)
+        half_batch = batch_size // 2
+
+        X_batch = np.zeros((batch_size, 160, 320, 3), dtype=np.float32)
+        y_batch = np.zeros((batch_size,), dtype=np.float32)
+
+        while True:
+            shuffle(samples)
+            
+            # iterate only half a batch because we're returning two samples each time
+            for idx in range(0, n_samples, half_batch):
+                
+                batch_idx = 0
+
+                for sample in samples[idx:idx+half_batch]:
+                    # lead image
+                    image = mpimg.imread(sample[0])
+                    
+                    # normal image
+                    X_batch[batch_idx] = image
+                    y_batch[batch_idx] = float(sample[1])
+                    batch_idx += 1
+
+                    # mirrored image
+                    X_batch[batch_idx] = np.fliplr(image)
+                    y_batch[batch_idx] = -float(sample[1])
+                    batch_idx += 1
+                
+                # the last batch might not be a full one
+                yield (X_batch[0:batch_idx,:,:,:], y_batch[0:batch_idx])
+
+            # end for
+
+        # end while
+
     def fix_image_path(self, path, img):
         return path + '/IMG/' + os.path.basename(img)
+
+    def num_train_samples(self):
+        return len(self.data_train) * 2
+
+    def num_validation_samples(self):
+        return len(self.data_validate) * 2
 
 
 class NvidiaModel:
     def __init__(self, load):
+        # tensorboard callback
         self.tensorboard = callbacks.TensorBoard(log_dir='./logs', histogram_freq=10, write_graph=True, write_images=True)
         
         if load:
+            # load previously trained model
             self.model = load_model('model.h5')
         else:
+            # create new model
             self.model = Sequential()
             self.model.add(Cropping2D(cropping=((60,20),(0,0)), name='CropTopBottom', input_shape=(160,320,3)))
             self.model.add(AveragePooling2D((1,2), name='Scale'))
@@ -115,8 +128,8 @@ class NvidiaModel:
             self.model.compile(loss='mse', optimizer='adam')
 
     def train(self, dataset, epochs):
-        self.model.fit_generator(dataset.generator_train, samples_per_epoch=len(dataset.data_train)*2, 
-                                 validation_data=dataset.generator_valid, nb_val_samples=len(dataset.data_validate)*2, 
+        self.model.fit_generator(dataset.generator_train, samples_per_epoch=dataset.num_train_samples(),
+                                 validation_data=dataset.generator_valid, nb_val_samples=dataset.num_validation_samples(),
                                  callbacks=[self.tensorboard],
                                  nb_epoch=epochs)
 
