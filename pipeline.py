@@ -2,26 +2,22 @@
 import numpy as np
 import cv2
 
+from collections import deque
+
 class LaneDetectionPipeline:
-    def __init__(self, camera):
+    def __init__(self, camera, smooth_factor=10):
         self.compute_perspective_transform()
         self.camera = camera
+
         self.debug = True
         self.debug_out = None
 
+        self.lanes = [deque(maxlen=smooth_factor), deque(maxlen=smooth_factor)]
+        self.cur_lane = [None, None]
+
     def compute_perspective_transform(self):
-        src_points = np.float32([[230, 700],
-                                 [560, 470],
-                                 [730, 470],
-                                 [1090, 700]])
-        dst_points = np.float32([[350, 720],
-                                 [350, 0],
-                                 [980, 0],
-                                 [980, 720]])
-        dst_points = np.float32([[ 300, 720], 
-                                 [ 300, 150], 
-                                 [ 980, 150], 
-                                 [ 980, 720]])
+        src_points = np.float32([[ 230, 700], [ 580, 460], [ 700, 460], [1090, 700]])
+        dst_points = np.float32([[ 300, 720], [ 310, 130], [1030, 130], [1040, 720]])
 
         self.persp_transform = cv2.getPerspectiveTransform(src_points, dst_points)
         self.persp_transform_inv = cv2.getPerspectiveTransform(dst_points, src_points)
@@ -55,8 +51,7 @@ class LaneDetectionPipeline:
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
         
         # take the luminance channel and apply a gradient treshold
-        # XXX saturation seems the give a better result
-        g_mask = self.gradient_treshold(hls[:,:,2])
+        g_mask = self.gradient_treshold(hls[:,:,1])
                 
         # take the saturation channel and apply a color treshold
         c_mask = self.color_treshold(hls[:,:,2])
@@ -141,35 +136,50 @@ class LaneDetectionPipeline:
         # fit second order polynomal functions to the points
         l_lane = np.polyfit(active_y[l_lane_indices], active_x[l_lane_indices], 2)
         r_lane = np.polyfit(active_y[r_lane_indices], active_x[r_lane_indices], 2)
-        
-        # (debug) draw the polynomals
+
+        self.lanes[0].append(l_lane)
+        self.lanes[1].append(r_lane)
+
+    def average_lanes(self):
+        self.cur_lane[0] = np.mean(np.array(list(self.lanes[0])), axis=0)
+        self.cur_lane[1] = np.mean(np.array(list(self.lanes[1])), axis=0)
+
+    def lane_image(self, img_w, img_h):
+        # convert the polynomal functions to a list of points
         plot_y  = np.linspace(0, img_h-1, img_h)
-        plot_lx = l_lane[0]*plot_y**2 + l_lane[1]*plot_y + l_lane[2]
-        plot_rx = r_lane[0]*plot_y**2 + r_lane[1]*plot_y + r_lane[2]
-        
-        plot_l = np.transpose(np.vstack([plot_lx, plot_y]))
-        plot_r = np.transpose(np.vstack([plot_rx, plot_y]))
-        
+        plot_lx = self.cur_lane[0][0]*plot_y**2 + self.cur_lane[0][1]*plot_y + self.cur_lane[0][2]
+        plot_rx = self.cur_lane[1][0]*plot_y**2 + self.cur_lane[1][1]*plot_y + self.cur_lane[1][2]
+
+        # combine the separate x/y arrays in to arrays with (x,y)-pairs
+        l_lane = np.transpose(np.vstack([plot_lx, plot_y]))
+        r_lane = np.transpose(np.vstack([plot_rx, plot_y]))
+
+        # output to the debug surface
         if self.debug:
-            cv2.polylines(self.debug_out, [np.int32(plot_l)], False, [0,255,255], 4)
-            cv2.polylines(self.debug_out, [np.int32(plot_r)], False, [0,255,255], 4)
-        
+            cv2.polylines(self.debug_out, [np.int32(l_lane)], False, [0,255,255], 4)
+            cv2.polylines(self.debug_out, [np.int32(r_lane)], False, [0,255,255], 4)
+
         # create a new image to draw the lane on
-        layer_zero  = np.zeros_like(img_mask).astype(np.uint8)
+        layer_zero  = np.zeros((img_h, img_w), dtype=np.uint8)
         lane_output = np.dstack((layer_zero, layer_zero, layer_zero))
         
-        points = np.concatenate((np.int32(plot_l), np.int32(np.flipud(plot_r))))
+        points = np.concatenate((np.int32(l_lane), np.int32(np.flipud(r_lane))))
         cv2.fillPoly(lane_output, [points], (0,255,0))
         
         # reproject to the original space
         lane_unwarp = cv2.warpPerspective(lane_output, self.persp_transform_inv, (img_w, img_h))
-        return lane_unwarp        
+        return lane_unwarp
+
     
     def run(self, img):
         corrected = self.undistort(img)
         top_down = self.transform_topdown(corrected)
         mask = self.treshold(top_down)
         
-        lane_img = self.detect_lane_lines(mask)
+        self.detect_lane_lines(mask)
+
+        self.average_lanes()
+
+        lane_img = self.lane_image(mask.shape[1], mask.shape[0])
         
         return cv2.addWeighted(corrected, 1, lane_img, 0.3, 0)
