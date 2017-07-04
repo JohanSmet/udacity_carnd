@@ -19,6 +19,7 @@ class LaneDetectionPipeline:
 
         self.lanes = [deque(maxlen=smooth_factor), deque(maxlen=smooth_factor)]
         self.cur_lane = [None, None]
+        self.lane_ok = [False, False]
 
     def compute_perspective_transform(self):
         #src_points = np.float32([[ 230, 700], [ 580, 460], [ 700, 460], [1090, 700]])
@@ -110,8 +111,7 @@ class LaneDetectionPipeline:
 
         return binary
     
-    def detect_lane_lines(self, img_mask):
-        
+    def sliding_window_search(self, img_mask):
         # fill some shorthand variables
         img_w, img_h = (img_mask.shape[1], img_mask.shape[0])
         
@@ -182,13 +182,57 @@ class LaneDetectionPipeline:
             self.debug_out[active_y[r_lane_indices], active_x[r_lane_indices]] = [0, 0, 255]
         
         # fit second order polynomal functions to the points
-        if (len(l_lane_indices) > 0):
-            l_lane = np.polyfit(active_y[l_lane_indices], active_x[l_lane_indices], 2)
-            self.lanes[0].append(l_lane)
+        self.lane_from_points(0, active_x[l_lane_indices], active_y[l_lane_indices])
+        self.lane_from_points(1, active_x[r_lane_indices], active_y[r_lane_indices])
 
-        if (len(r_lane_indices) > 0):
-            r_lane = np.polyfit(active_y[r_lane_indices], active_x[r_lane_indices], 2)
-            self.lanes[1].append(r_lane)
+    def draw_filled_poly(self, img, poly, margin, color):
+        plot_y  = np.linspace(0, img.shape[1]-1, img.shape[0])
+        plot_lx = poly[0]*plot_y**2 + poly[1]*plot_y + poly[2] - margin
+        plot_rx = poly[0]*plot_y**2 + poly[1]*plot_y + poly[2] + margin
+
+        l_border = np.transpose(np.vstack([plot_lx, plot_y]))
+        r_border = np.transpose(np.vstack([plot_rx, plot_y]))
+
+        points = np.concatenate((np.int32(l_border), np.int32(np.flipud(r_border))))
+        cv2.fillPoly(img, [points], color)
+    
+    def margin_search(self, img_mask):
+        # fill some shorthand variables
+        img_w, img_h = (img_mask.shape[1], img_mask.shape[0])
+        margin       = 100
+        
+        # save the indices of the active pixels in the mask
+        active_y, active_x = np.nonzero(img_mask)
+                
+        # create a RGB output image to draw on and  visualize the result
+        if self.debug:
+            self.debug_out = np.dstack((img_mask, img_mask, img_mask)) * 255
+
+        # find indices of the pixels within the margins of the previously detected lanes
+        l_inds = ((active_x > (self.cur_lane[0][0]*(active_y**2) + self.cur_lane[0][1]*active_y + self.cur_lane[0][2] - margin)) & 
+                  (active_x < (self.cur_lane[0][0]*(active_y**2) + self.cur_lane[0][1]*active_y + self.cur_lane[0][2] + margin))) 
+        r_inds = ((active_x > (self.cur_lane[1][0]*(active_y**2) + self.cur_lane[1][1]*active_y + self.cur_lane[1][2] - margin)) & 
+                  (active_x < (self.cur_lane[1][0]*(active_y**2) + self.cur_lane[1][1]*active_y + self.cur_lane[1][2] + margin))) 
+
+        # color the detected pixels
+        if self.debug:
+            self.draw_filled_poly(self.debug_out, self.cur_lane[0], margin, [0,255,0])
+            self.draw_filled_poly(self.debug_out, self.cur_lane[1], margin, [0,255,0])
+            self.debug_out[active_y[l_inds], active_x[l_inds]] = [255, 0, 0]
+            self.debug_out[active_y[r_inds], active_x[r_inds]] = [0, 0, 255]
+
+        # fit second order polynomal functions to the points
+        self.lane_from_points(0, active_x[l_inds], active_y[l_inds])
+        self.lane_from_points(1, active_x[r_inds], active_y[r_inds])
+
+    def lane_from_points(self, side, points_x, points_y):
+        self.lane_ok[side] = False
+
+        if len(points_x) > 0 and len(points_x) == len(points_y):
+            lane = np.polyfit(points_y, points_x, 2)
+            self.lane_ok[side] = True
+            self.lanes[side].append(lane)
+
 
     def average_lanes(self):
         self.cur_lane[0] = np.mean(np.array(list(self.lanes[0])), axis=0)
@@ -226,7 +270,11 @@ class LaneDetectionPipeline:
         binary = self.treshold(corrected)
         top_down = self.transform_topdown(binary)
         
-        self.detect_lane_lines(top_down)
+        if self.lane_ok[0] and self.lane_ok[1]:
+            self.margin_search(top_down)
+
+        if not (self.lane_ok[0] and self.lane_ok[1]):
+            self.sliding_window_search(top_down)
 
         self.average_lanes()
 
