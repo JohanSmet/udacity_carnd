@@ -21,8 +21,10 @@ class LaneDetectionPipeline:
         self.cur_lane = [None, None]
 
     def compute_perspective_transform(self):
-        src_points = np.float32([[ 230, 700], [ 580, 460], [ 700, 460], [1090, 700]])
-        dst_points = np.float32([[ 300, 720], [ 310, 130], [1030, 130], [1040, 720]])
+        #src_points = np.float32([[ 230, 700], [ 580, 460], [ 700, 460], [1090, 700]])
+        #dst_points = np.float32([[ 300, 720], [ 310, 130], [ 930, 130], [ 940, 720]])
+        src_points = np.float32([[581,477], [699,477], [896,675], [384,675]])
+        dst_points = np.float32([[384, 0], [896, 0], [896, 720], [384, 720]])
 
         self.persp_transform = cv2.getPerspectiveTransform(src_points, dst_points)
         self.persp_transform_inv = cv2.getPerspectiveTransform(dst_points, src_points)
