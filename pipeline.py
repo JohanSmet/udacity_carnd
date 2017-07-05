@@ -5,7 +5,7 @@ import cv2
 from collections import deque
 
 class LaneDetectionPipeline:
-    def __init__(self, camera, smooth_factor=10):
+    def __init__(self, camera, smooth_factor=3):
         self.compute_perspective_transform()
         self.camera = camera
 
@@ -13,19 +13,29 @@ class LaneDetectionPipeline:
         self.debug_out = None
         self.debug_tresh = None
 
-        self.b_min = 190
-        self.s_min = 100
-        self.l_min = 195
+        self.threshold_min = {
+            'g' : 200,
+            'r' : 200,
+            's' : 100,
+            'l_n' : 180,
+            'l_l' : 220,
+            'v_n' : 180,
+            'v_l' : 230,
+        }
 
         self.lanes = [deque(maxlen=smooth_factor), deque(maxlen=smooth_factor)]
         self.cur_lane = [None, None]
         self.lane_ok = [False, False]
 
+    def set_threshold_min(self, channel, value):
+        self.threshold_min[channel] = value
+
+    def get_threshold_min(self, channel):
+        return self.threshold_min[channel]
+
     def compute_perspective_transform(self):
-        #src_points = np.float32([[ 230, 700], [ 580, 460], [ 700, 460], [1090, 700]])
-        #dst_points = np.float32([[ 300, 720], [ 310, 130], [ 930, 130], [ 940, 720]])
         src_points = np.float32([[581,477], [699,477], [896,675], [384,675]])
-        dst_points = np.float32([[384, 0], [896, 0], [896, 720], [384, 720]])
+        dst_points = np.float32([[384,200], [896,200], [896,720], [384,720]])
 
         self.persp_transform = cv2.getPerspectiveTransform(src_points, dst_points)
         self.persp_transform_inv = cv2.getPerspectiveTransform(dst_points, src_points)
@@ -38,14 +48,17 @@ class LaneDetectionPipeline:
                                    (img.shape[1], img.shape[0]),
                                    flags=cv2.INTER_LINEAR)
 
-    def gradient_treshold(self, img, t_min=20, t_max=100):
-        # absolute value of derivate in x (accentuates more vertical lines)
-        sobelx = np.absolute(cv2.Sobel(img, cv2.CV_64F, 1, 0))
-        scaled_sobelx = np.uint8(255*sobelx/np.max(sobelx))
+    def gradient_treshold(self, img, dir='x', t_min=20, t_max=100):
+        if dir == 'x':
+            sobel = np.absolute(cv2.Sobel(img, cv2.CV_64F, 1, 0))
+        else:
+            sobel = np.absolute(cv2.Sobel(img, cv2.CV_64F, 0, 1))
 
-        # threshold x gradient
-        mask = np.zeros_like(scaled_sobelx)
-        mask[(scaled_sobelx >= t_min) & (scaled_sobelx <= t_max)] = 1
+        scaled_sobel = np.uint8(255*sobel/np.max(sobel))
+
+        # threshold gradient
+        mask = np.zeros_like(scaled_sobel)
+        mask[(scaled_sobel >= t_min) & (scaled_sobel <= t_max)] = 1
 
         return mask
 
@@ -58,58 +71,36 @@ class LaneDetectionPipeline:
 
         img_h, img_w, _ = img.shape
 
-        crop = img[3*img_h//5:int(img_h*0.95),:,]
+        # g/r channel to detect yellow lines
+        #g_channel = img[:,:,1]
+        #g_mask = self.color_treshold(g_channel, self.threshold_min['g'], 255)
 
-        # convert the image to grayscale and apply a gradient treshold
-        #gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        #g_mask = self.gradient_treshold(gray, 100, 255)
+        #r_channel = img[:,:,2]
+        #r_mask = self.color_treshold(r_channel, self.threshold_min['r'], 255)
 
-        # convert image to HLS colorspace and apply a color treshold on the saturation channel
-        hls = cv2.cvtColor(crop, cv2.COLOR_BGR2HLS)
-        s_channel = hls[:,:,2] * (255 / np.max(hls[:,:,2]))
-        l_channel = hls[:,:,1] * (255 / np.max(hls[:,:,1]))
-        s_mask = self.color_treshold(s_channel, self.s_min, 255)
-        l_mask = self.color_treshold(l_channel, self.l_min, 255)
+        # convert image to HLS colorspace 
+        hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+        l_channel = hls[:,:,1]  * (255 / np.max(hls[:,:,1]))
 
         # convert image to HSV colorspace and apply color treshold on the value channel
-        #hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        #v_mask = self.color_treshold(hsv[:,:,2], self.v_min, 255)
-        lab = cv2.cvtColor(crop, cv2.COLOR_BGR2LAB)
-        b_channel = lab[:,:,2]
-        b_max = np.max(b_channel)
-        if (b_max > 160):   
-            b_channel = b_channel * (255 / b_max)
-        b_mask = self.color_treshold(b_channel, self.b_min, 255)
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        v_channel = hsv[:,:,2] * (255 / np.max(hsv[:,:,2]))
+
+        # determine which thresholds to use
+        brightness = np.mean(v_channel)
+        l_thresh = 'l_n' if np.mean(l_channel) < 100 else 'l_l'
+        v_thresh = 'v_n' if np.mean(v_channel) < 100 else 'v_l'
+
+        # apply thresholds
+        l_mask = self.color_treshold(l_channel, self.threshold_min[l_thresh], 255)
+        v_mask = self.color_treshold(v_channel, self.threshold_min[v_thresh], 255)
         
         # combine the masks
-        mask = np.zeros_like(s_mask)
-        #mask[(g_mask == 1) | ((s_mask == 1) | (b_mask == 1) | (l_mask == 1))] = 1
-        mask[(b_mask == 1) | (l_mask == 1)] = 1
+        mask = np.zeros_like(v_mask)
+        #mask[((g_mask == 1) & (r_mask == 1)) | (v_mask == 1) | (l_mask == 1)] = 1
+        mask[(v_mask == 1) | (l_mask == 1)] = 1
 
-        binary = np.zeros((img_h, img_w), dtype=np.uint8)
-        binary[3*img_h//5:int(img_h*0.95),:,] = mask
-
-        # debug output
-        crop_h = (int(img_h*0.95) - (3*img_h//5)) // 2
-        crop_w = img_w // 2
-
-        self.debug_tresh = np.zeros_like(binary)
-        self.debug_tresh[:crop_h,:crop_w] = cv2.resize(s_channel, dsize=(crop_w, crop_h))
-        self.debug_tresh[:crop_h,crop_w:] = cv2.resize(s_mask * 255, dsize=(crop_w, crop_h))
-        self.debug_tresh[crop_h+5:crop_h*2+5,:crop_w] = cv2.resize(b_channel, dsize=(crop_w, crop_h))
-        self.debug_tresh[crop_h+5:crop_h*2+5,crop_w:] = cv2.resize(b_mask * 255, dsize=(crop_w, crop_h))
-        self.debug_tresh[crop_h*2+10:crop_h*3+10,:crop_w] = cv2.resize(l_channel, dsize=(crop_w, crop_h))
-        self.debug_tresh[crop_h*2+10:crop_h*3+10,crop_w:] = cv2.resize(l_mask * 255, dsize=(crop_w, crop_h))
-        #self.debug_tresh[crop_h*3+15:crop_h*4+15,:crop_w] = cv2.resize(gray, dsize=(crop_w, crop_h))
-        #self.debug_tresh[crop_h*3+15:crop_h*4+15,crop_w:] = cv2.resize(g_mask * 255, dsize=(crop_w, crop_h))
-
-        self.debug_tresh[crop_h*4+20:crop_h*5+20,:crop_w] = cv2.resize(mask * 255, dsize=(crop_w, crop_h))
-
-
-        #self.debug_tresh[crop_h + 5:crop_h*2 + 5,:] = v_mask * 255
-#        self.debug_tresh[crop_h*2:crop_h*3,:] = v_mask
-
-        return binary
+        return mask
     
     def sliding_window_search(self, img_mask):
         # fill some shorthand variables
@@ -235,10 +226,13 @@ class LaneDetectionPipeline:
 
 
     def average_lanes(self):
-        self.cur_lane[0] = np.mean(np.array(list(self.lanes[0])), axis=0)
-        self.cur_lane[1] = np.mean(np.array(list(self.lanes[1])), axis=0)
+        if len(self.lanes[0]) > 0:
+            self.cur_lane[0] = np.mean(np.array(list(self.lanes[0])), axis=0)
+        if len(self.lanes[1]) > 0:
+            self.cur_lane[1] = np.mean(np.array(list(self.lanes[1])), axis=0)
 
     def lane_image(self, img_w, img_h):
+
         # convert the polynomal functions to a list of points
         plot_y  = np.linspace(0, img_h-1, img_h)
         plot_lx = self.cur_lane[0][0]*plot_y**2 + self.cur_lane[0][1]*plot_y + self.cur_lane[0][2]
@@ -267,17 +261,19 @@ class LaneDetectionPipeline:
     
     def run(self, img):
         corrected = self.undistort(img)
-        binary = self.treshold(corrected)
-        top_down = self.transform_topdown(binary)
+        top_down = self.transform_topdown(corrected)
+        binary = self.treshold(top_down)
         
         if self.lane_ok[0] and self.lane_ok[1]:
-            self.margin_search(top_down)
+            self.margin_search(binary)
 
         if not (self.lane_ok[0] and self.lane_ok[1]):
-            self.sliding_window_search(top_down)
+            self.sliding_window_search(binary)
 
         self.average_lanes()
 
-        lane_img = self.lane_image(binary.shape[1], binary.shape[0])
-        
-        return cv2.addWeighted(corrected, 1, lane_img, 0.3, 0)
+        if not (self.cur_lane[0] is None or self.cur_lane[1] is None):
+            lane_img = self.lane_image(binary.shape[1], binary.shape[0])
+            return cv2.addWeighted(corrected, 1, lane_img, 0.3, 0)
+        else:
+            return corrected
