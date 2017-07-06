@@ -11,7 +11,6 @@ class LaneDetectionPipeline:
 
         self.debug = True
         self.debug_out = None
-        self.debug_tresh = None
 
         self.threshold_min = {
             'g' : 200,
@@ -26,6 +25,9 @@ class LaneDetectionPipeline:
         self.lanes = [deque(maxlen=smooth_factor), deque(maxlen=smooth_factor)]
         self.cur_lane = [None, None]
         self.lane_ok = [False, False]
+
+        self.curve_rad = None
+        self.center_offset = None
 
     def set_threshold_min(self, channel, value):
         self.threshold_min[channel] = value
@@ -269,7 +271,30 @@ class LaneDetectionPipeline:
         lane_unwarp = cv2.warpPerspective(lane_output, self.persp_transform_inv, (img_w, img_h))
         return lane_unwarp
 
-    
+    def lane_measurements(self, img_w, img_h):
+        # conversion factors using US standard regulations and manual measurements taken from the binary image
+        xm_per_pixel = 3.7 / 770
+        ym_per_pixel = 3 / 126
+
+        # convert the polynomal functions to a list of points
+        plot_y = np.linspace(0, img_h-1, img_h)
+        plot_lx = self.cur_lane[0][0]*plot_y**2 + self.cur_lane[0][1]*plot_y + self.cur_lane[0][2]
+        plot_rx = self.cur_lane[1][0]*plot_y**2 + self.cur_lane[1][1]*plot_y + self.cur_lane[1][2]
+        
+        # refit the polynomal functions in world coordinates
+        l_wc = np.polyfit(plot_y*ym_per_pixel, plot_lx*xm_per_pixel, 2)
+        r_wc = np.polyfit(plot_y*ym_per_pixel, plot_rx*xm_per_pixel, 2)
+
+        # compute curvature radius at the point closest to the car
+        y = img_h - 1
+        l_curverad = ((1 + (2*l_wc[0]*y*ym_per_pixel + l_wc[1])**2)**1.5) / np.absolute(2*l_wc[0])
+        r_curverad = ((1 + (2*l_wc[0]*y*ym_per_pixel + l_wc[1])**2)**1.5) / np.absolute(2*l_wc[0])
+        self.curve_rad = (l_curverad + r_curverad) / 2
+
+        # compute offset from center
+        lane_center = (plot_lx[-1] + plot_rx[-1]) / 2
+        self.center_offset = ((img_w / 2) - lane_center) * xm_per_pixel
+
     def run(self, img):
         corrected = self.undistort(img)
         top_down = self.transform_topdown(corrected)
@@ -284,6 +309,9 @@ class LaneDetectionPipeline:
         self.average_lanes()
 
         if not (self.cur_lane[0] is None or self.cur_lane[1] is None):
+            self.lane_measurements(binary.shape[1], binary.shape[0])
+            cv2.putText(corrected, "Curvature radius = {:.0f}m".format(self.curve_rad), (20, 30), cv2.FONT_HERSHEY_PLAIN, 2.0, (255,0,255), 2)
+            cv2.putText(corrected, "Offset from center = {:.3f}m".format(self.center_offset), (20, 60), cv2.FONT_HERSHEY_PLAIN, 2.0, (255, 0, 255), 2)
             lane_img = self.lane_image(binary.shape[1], binary.shape[0])
             return cv2.addWeighted(corrected, 1, lane_img, 0.3, 0)
         else:
