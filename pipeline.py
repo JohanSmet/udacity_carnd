@@ -216,13 +216,25 @@ class LaneDetectionPipeline:
         self.lane_from_points(1, active_x[r_inds], active_y[r_inds])
 
     def lane_from_points(self, side, points_x, points_y):
-        self.lane_ok[side] = False
 
-        if len(points_x) > 0 and len(points_x) == len(points_y):
-            lane = np.polyfit(points_y, points_x, 2)
-            self.lane_ok[side] = True
-            self.lanes[side].append(lane)
+        # only if the point-arrays contain valid data
+        if len(points_x) == 0 or len(points_x) != len(points_y):
+            self.lane_ok[side] = False
+            return
 
+        # fit the polynomal
+        lane = np.polyfit(points_y, points_x, 2)
+
+        # reject outliers
+        if self.cur_lane[side] is not None and self.lane_ok[side] == True:
+            delta = np.absolute(lane - self.cur_lane[side])
+
+            if delta[0] > 0.001 or delta[1] > 1 or delta[2] > 100:
+                self.lane_ok[side] = False
+                return
+
+        self.lane_ok[side] = True
+        self.lanes[side].append(lane)
 
     def average_lanes(self):
         if len(self.lanes[0]) > 0:
