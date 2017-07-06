@@ -19,8 +19,8 @@ class LaneDetectionPipeline:
             's' : 100,
             'l_n' : 180,
             'l_l' : 220,
-            'v_n' : 180,
-            'v_l' : 230,
+            'b_n' : 160,
+            'b_l' : 200,
         }
 
         self.lanes = [deque(maxlen=smooth_factor), deque(maxlen=smooth_factor)]
@@ -78,27 +78,26 @@ class LaneDetectionPipeline:
         #r_channel = img[:,:,2]
         #r_mask = self.color_treshold(r_channel, self.threshold_min['r'], 255)
 
-        # convert image to HLS colorspace 
+        # convert image to HLS colorspace and scale the luminance channel
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
         l_channel = hls[:,:,1]  * (255 / np.max(hls[:,:,1]))
 
-        # convert image to HSV colorspace and apply color treshold on the value channel
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        v_channel = hsv[:,:,2] * (255 / np.max(hsv[:,:,2]))
+        # convert image to LAB colorspace and take the 'b' (blue-yellow) channel
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        b_channel = lab[:,:,2] 
 
         # determine which thresholds to use
-        brightness = np.mean(v_channel)
+        brightness = np.mean(b_channel)
         l_thresh = 'l_n' if np.mean(l_channel) < 100 else 'l_l'
-        v_thresh = 'v_n' if np.mean(v_channel) < 100 else 'v_l'
+        b_thresh = 'b_n' if np.mean(b_channel) < 150 else 'b_l'
 
         # apply thresholds
         l_mask = self.color_treshold(l_channel, self.threshold_min[l_thresh], 255)
-        v_mask = self.color_treshold(v_channel, self.threshold_min[v_thresh], 255)
+        b_mask = self.color_treshold(b_channel, self.threshold_min[b_thresh], 255)
         
         # combine the masks
-        mask = np.zeros_like(v_mask)
-        #mask[((g_mask == 1) & (r_mask == 1)) | (v_mask == 1) | (l_mask == 1)] = 1
-        mask[(v_mask == 1) | (l_mask == 1)] = 1
+        mask = np.zeros_like(b_mask)
+        mask[(l_mask == 1) | (b_mask == 1)] = 1
 
         return mask
     
@@ -190,7 +189,7 @@ class LaneDetectionPipeline:
     def margin_search(self, img_mask):
         # fill some shorthand variables
         img_w, img_h = (img_mask.shape[1], img_mask.shape[0])
-        margin       = 100
+        margin       = 50
         
         # save the indices of the active pixels in the mask
         active_y, active_x = np.nonzero(img_mask)
