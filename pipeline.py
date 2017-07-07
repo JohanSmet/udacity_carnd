@@ -1,4 +1,3 @@
-
 import numpy as np
 import cv2
 
@@ -36,7 +35,7 @@ class LaneDetectionPipeline:
         return self.threshold_min[channel]
 
     def compute_perspective_transform(self):
-        src_points = np.float32([[581,477], [699,477], [896,675], [384,675]])
+        src_points = np.float32([[565,475], [720,475], [1030,675], [280,675]])
         dst_points = np.float32([[384,200], [896,200], [896,720], [384,720]])
 
         self.persp_transform = cv2.getPerspectiveTransform(src_points, dst_points)
@@ -50,7 +49,7 @@ class LaneDetectionPipeline:
                                    (img.shape[1], img.shape[0]),
                                    flags=cv2.INTER_LINEAR)
 
-    def gradient_treshold(self, img, dir='x', t_min=20, t_max=100):
+    def gradient_threshold(self, img, dir='x', t_min=20, t_max=100):
         if dir == 'x':
             sobel = np.absolute(cv2.Sobel(img, cv2.CV_64F, 1, 0))
         else:
@@ -64,21 +63,21 @@ class LaneDetectionPipeline:
 
         return mask
 
-    def color_treshold(self, img, c_min=175, c_max=255):
+    def color_threshold(self, img, c_min=175, c_max=255):
         mask = np.zeros_like(img)
         mask[(img >= c_min) & (img < c_max)] = 1
         return mask
     
-    def treshold(self, img):
+    def threshold(self, img):
 
         img_h, img_w, _ = img.shape
 
         # g/r channel to detect yellow lines
         #g_channel = img[:,:,1]
-        #g_mask = self.color_treshold(g_channel, self.threshold_min['g'], 255)
+        #g_mask = self.color_threshold(g_channel, self.threshold_min['g'], 255)
 
         #r_channel = img[:,:,2]
-        #r_mask = self.color_treshold(r_channel, self.threshold_min['r'], 255)
+        #r_mask = self.color_threshold(r_channel, self.threshold_min['r'], 255)
 
         # convert image to HLS colorspace and scale the luminance channel
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
@@ -94,8 +93,8 @@ class LaneDetectionPipeline:
         b_thresh = 'b_n' if np.mean(b_channel) < 150 else 'b_l'
 
         # apply thresholds
-        l_mask = self.color_treshold(l_channel, self.threshold_min[l_thresh], 255)
-        b_mask = self.color_treshold(b_channel, self.threshold_min[b_thresh], 255)
+        l_mask = self.color_threshold(l_channel, self.threshold_min[l_thresh], 255)
+        b_mask = self.color_threshold(b_channel, self.threshold_min[b_thresh], 255)
         
         # combine the masks
         mask = np.zeros_like(b_mask)
@@ -173,7 +172,7 @@ class LaneDetectionPipeline:
             self.debug_out[active_y[l_lane_indices], active_x[l_lane_indices]] = [255, 0, 0]
             self.debug_out[active_y[r_lane_indices], active_x[r_lane_indices]] = [0, 0, 255]
         
-        # fit second order polynomal functions to the points
+        # fit second order polynomial functions to the points
         self.lane_from_points(0, active_x[l_lane_indices], active_y[l_lane_indices])
         self.lane_from_points(1, active_x[r_lane_indices], active_y[r_lane_indices])
 
@@ -213,7 +212,7 @@ class LaneDetectionPipeline:
             self.debug_out[active_y[l_inds], active_x[l_inds]] = [255, 0, 0]
             self.debug_out[active_y[r_inds], active_x[r_inds]] = [0, 0, 255]
 
-        # fit second order polynomal functions to the points
+        # fit second order polynomial functions to the points
         self.lane_from_points(0, active_x[l_inds], active_y[l_inds])
         self.lane_from_points(1, active_x[r_inds], active_y[r_inds])
 
@@ -224,7 +223,7 @@ class LaneDetectionPipeline:
             self.lane_ok[side] = False
             return
 
-        # fit the polynomal
+        # fit the polynomial
         lane = np.polyfit(points_y, points_x, 2)
 
         # reject outliers
@@ -246,7 +245,7 @@ class LaneDetectionPipeline:
 
     def lane_image(self, img_w, img_h):
 
-        # convert the polynomal functions to a list of points
+        # convert the polynomial functions to a list of points
         plot_y  = np.linspace(0, img_h-1, img_h)
         plot_lx = self.cur_lane[0][0]*plot_y**2 + self.cur_lane[0][1]*plot_y + self.cur_lane[0][2]
         plot_rx = self.cur_lane[1][0]*plot_y**2 + self.cur_lane[1][1]*plot_y + self.cur_lane[1][2]
@@ -273,15 +272,15 @@ class LaneDetectionPipeline:
 
     def lane_measurements(self, img_w, img_h):
         # conversion factors using US standard regulations and manual measurements taken from the binary image
-        xm_per_pixel = 3.7 / 770
+        xm_per_pixel = 3.7 / 530
         ym_per_pixel = 3 / 126
 
-        # convert the polynomal functions to a list of points
+        # convert the polynomial functions to a list of points
         plot_y = np.linspace(0, img_h-1, img_h)
         plot_lx = self.cur_lane[0][0]*plot_y**2 + self.cur_lane[0][1]*plot_y + self.cur_lane[0][2]
         plot_rx = self.cur_lane[1][0]*plot_y**2 + self.cur_lane[1][1]*plot_y + self.cur_lane[1][2]
         
-        # refit the polynomal functions in world coordinates
+        # refit the polynomial functions in world coordinates
         l_wc = np.polyfit(plot_y*ym_per_pixel, plot_lx*xm_per_pixel, 2)
         r_wc = np.polyfit(plot_y*ym_per_pixel, plot_rx*xm_per_pixel, 2)
 
@@ -298,7 +297,7 @@ class LaneDetectionPipeline:
     def run(self, img):
         corrected = self.undistort(img)
         top_down = self.transform_topdown(corrected)
-        binary = self.treshold(top_down)
+        binary = self.threshold(top_down)
         
         if self.lane_ok[0] and self.lane_ok[1]:
             self.margin_search(binary)
