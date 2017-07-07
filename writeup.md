@@ -24,7 +24,7 @@ The goals / steps of this project are the following:
 [image7]: ./output_images/sliding_window.jpg "Example of sliding window search"
 [image8]: ./output_images/margin_search.jpg "Example of margin search"
 [image9]: ./output_images/output_example.png "Example of resulting image"
-[video1]: ./output_images/project_video.mp4 "Processed Project Video"
+[video1]: https://cdn.rawgit.com/JohanSmet/CarND-Advanced-Lane-Lines/0011fb7b/output_images/project_video.mp4 "Processed Project Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -42,7 +42,7 @@ You're reading it!
 
 The code for this step is contained in the calibrate function of the `Camera` class located in the camera.py file.
 
-The results of the calibration are saved to a file. The first step of the calibration function is to check if this file exists from a previous execution and load it instead of running the entire calibration. This will save us a lot of time in the next stage of the project.
+The results of the calibration are saved to a file. The first step of the calibration function is to check if this file exists from a previous execution and load it instead of running the entire calibration again. This will save us a lot of time in the next stage of the project.
 
 The first real step of the calibration is preparing the "object points", which are the XYZ-coordinates of the chessboard corners in world space. By assuming the chessboard is fixed to the XY-plane (Z=0) these points will be the same for each calibration image.
 
@@ -50,7 +50,7 @@ Then the function iterates through each image and uses OpenCV to find the intern
 
 The last step uses OpenCV again to calculate the camera matrix and distance coefficients.
 
-The `Camera` class also has a function to undistort images using the calculated information, called undistort().
+The `Camera` class also has a function to undistort images using the calculated information, called `undistort()`.
 An example of running this function on a chessboard image is reproduced below.
 
 ![alt text][image1]
@@ -66,24 +66,24 @@ The distortion-correction is done by the `undistort()` function of the `Camera` 
 
 I experimented a lot with different combinations for this step. In fact it feels like I spent the majority of my time on this project fiddling with these settings. You can see the final implementation in the `LaneDetectionPipeline` class located in pipeline.py in the function `threshold()` and helper functions `gradient_threshold()` and `color_threshold()`.
 
-I started with a gradient threshold by applying the Sobel operator in the x-direction to emphasize near vertical lines. At first I combined this with a color threshold on a grayscaled image. This worked reasonably well for the provded test images but broke down on the project video. I found that the gradient threshold resulted in to chaotic images with much unwanted artifacts. Here is an example of the gradient threshold:
+I started with a gradient threshold by applying the Sobel operator in the x-direction to emphasize near vertical lines. At first I combined this with a color threshold on a grayscaled image. This worked reasonably well for the provided test images but broke down on the project video. I found that the gradient threshold resulted in to chaotic images with much unwanted artifacts. Here is an example of the gradient threshold:
 ![alt text][image4]
 
 The next step was to look at the color space conversion provided by OpenCV and seeing which channel had the best qualities to detect certain colors. Here is an overview of a few different color representations:
 ![alt text][image3]
 
-Several of these look like good candidates: a combinates of the green and red channel can be used to detect yellow lines, the 'L'uminance channel of HLS accentuates white lines, the 'V'alue channel of HSV shows the white and yellow lines and finally the 'B' (blue-yellow) channel of LAB seems ideal to detect yellow lines.
+Several of these look like good candidates: a combination of the green and red channel can be used to detect yellow lines, the 'L'uminance channel of HLS accentuates white lines, the 'V'alue channel of HSV shows the white and yellow lines and finally the 'B' (blue-yellow) channel of LAB seems ideal to detect yellow lines.
 
 I experimented with quite a few combinations but in the end I settled on a combination of the 'L' and 'B' channels. The next image shows an example of this filter:
 ![alt text][image5]
 
-This works very well on the test images and the project video. I also tried to vary the minimum threshold based on the average brightness of the image in an effort to improve results on the first challenge video. I applied the threshold after the perspective transform to limit the area of interest. This helps a bit but still does create a perfect result.
+This works very well on the test images and the project video. I also tried to vary the minimum threshold based on the average brightness of the image in an effort to improve results on the first challenge video. I applied the threshold after the perspective transform to limit the area of interest. This helps a bit but still does not create a perfect result.
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The `LaneDetectionPipeline` class contains a function called `compute_perspective_transform()` that uses OpenCV to compute a perspective transform matrix based on hardcoded points. The `transform_topdown()` takes an image as input and applies this transform to it.
+The `LaneDetectionPipeline` class contains a function called `compute_perspective_transform()` that uses OpenCV to compute a perspective transform matrix based on hard-coded points. The `transform_topdown()` takes an image as input and applies this transform to it.
 
-I chose to keep it simple and hardcoded the following source and destination points : 
+I chose to keep it simple and hard-coded the following source and destination points : 
 
 | Source    | Destination |
 |:---------:|:-----------:|
@@ -104,7 +104,7 @@ The `LaneDetectionPipeline` class contains two functions that try to identify la
 
 The `lane_from_points()` functions takes the detected pixels and fits a second-order polynomial to it using the NumPy polyfit function.
 
-The sliding window search starts by computing the histogram of the lower half of the image. The biggest peaks on the left and right side respectively are used as the starting points for the lane lines. A window of predetermined width and height is centered on these starting points and all true pixels in the window are considered a part of the line. The windows then move up and are potentially recentered around the horizontal mean of the detected pixels. This makes the windows follow a curved line. The next image is an example of this process: 
+The sliding window search starts by computing the histogram of the lower half of the image. The biggest peaks on the left and right side respectively are used as the starting points for the lane lines. A window of predetermined width and height is centered on these starting points and all true pixels in the window are considered a part of the line. The windows then moves up and are potentially recentered around the horizontal mean of the detected pixels. This makes the windows follow a curved line. The next image is an example of this process: 
 
 ![alt text][image7]
 
@@ -112,7 +112,7 @@ The sliding window search is only used when no lane-lines were previously detect
 
 ![alt text][image8]
 
-Finally the `lane_from_points()` function is used to fit a polynomial function to the points. The pipeline save the last few detected lines and the average of these is used to further smooth the resulting lines. The newly detected lines are compared to the current average and if the polynomial factors differ too much the new line is rejected as an outlier.
+Finally the `lane_from_points()` function is used to fit a polynomial function to the points. The pipeline stores the last few detected lines and the average of these is used to further smooth the resulting lines. The newly detected lines are compared to the current average and if the polynomial factors differ too much the new line is rejected as an outlier.
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
@@ -151,10 +151,10 @@ I also uploaded to YouTube once with and once without the debug overly. Click on
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-The first issue I faces was getting the perspective transformation to give decent results. I took some tweaking of the source and destinations points but I think I got a decent top-down view with parallel lane lines.
+The first issue I faced was getting the perspective transformation to give decent results. It took some tweaking of the source and destinations points but I think I got a decent top-down view with parallel lane lines.
 
 The biggest problem was trying to generalize the thresholding function to work in different lighting conditions. I tried lots of different combination to try the get the pipeline to work on all three videos. The setup now works great on the project video but only on about 80% of the challenge video if I tweak the threshold values. I wanted to get better results but I ran out of time and decided to concentrate on the project video. 
 
-The pipeline now fails in very bright or dark scenarios. I would imagine different weather conditions would also be catastrophic. Maybe a different type of camera (near-infrared or uv) might help in these situations?
+The pipeline now fails in very bright or dark scenarios. I would imagine different weather conditions would also be catastrophic. I tried varying the thresholds based on the brightness but maybe some other heuristic (e.g. number of detected pixels) might provide better results. Maybe a different type of camera (near-infrared or uv) might help in these situations?
 
 Very winding roads also cause some problems for the polyfit function. Only predicting a smaller piece could help or maybe splitting the image in sections and mapping multiple second order polynomial functions. 
