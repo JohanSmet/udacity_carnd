@@ -24,7 +24,6 @@ The goals / steps of this project are the following:
 [image7]: ./output_images/sliding_window.jpg "Example of sliding window search"
 [image8]: ./output_images/margin_search.jpg "Example of margin search"
 [image9]: ./output_images/output_example.png "Example of resulting image"
-[video1]: https://cdn.rawgit.com/JohanSmet/CarND-Advanced-Lane-Lines/0011fb7b/output_images/project_video.mp4 "Processed Project Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -136,10 +135,9 @@ Later on this image is blended with the distortion corrected input image. Here i
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
 
-The processed project video is included in the GitHup repo:
-![alt text][video1]
+The processed project video is included in the GitHup repo: [link to video]( https://cdn.rawgit.com/JohanSmet/CarND-Advanced-Lane-Lines/0011fb7b/output_images/project_video.mp4).
 
-I also uploaded to YouTube once with and once without the debug overly. Click on the images below to view the videos:
+I also uploaded to YouTube with and without the debug overly. Click on the images below to view the videos:
 
 [![Project Video](https://img.youtube.com/vi/a_g7BlnXAXw/0.jpg)](https://www.youtube.com/watch?v=a_g7BlnXAXw)
 
