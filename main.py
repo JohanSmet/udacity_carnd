@@ -6,7 +6,7 @@ from car_classifier import CarClassifier
 from car_detector import CarDetector
 from camera import Camera
 
-DEBUG_VISUALIZE = True
+DEBUG_VISUALIZE = False
 DEBUG_WINDOW = 'output'
 
 def process_video(filename, detector, camera, start_frame=0):
@@ -67,7 +67,6 @@ def process_video(filename, detector, camera, start_frame=0):
         # debug output
         if DEBUG_VISUALIZE:
             cv2.imshow(DEBUG_WINDOW, result)
-            #cv2.imshow(DEBUG_WINDOW, heatmap)
 
         # video output 
         video_out.write(result)
@@ -88,37 +87,10 @@ def debug_output_search_windows(filename, detector, camera):
     src_img = camera.undistort(cv2.imread(filename))
     video_out = cv2.VideoWriter('output_images/windows.avi', cv2.VideoWriter_fourcc(*'DIB '), 5.0, (1280,720))
 
-    """
-    iterations =[
-        {'scale':1,   'y':(400,496), 'x':(0, src_img.shape[1])},
-        {'scale':1.5, 'y':(384,576), 'x':(32, src_img.shape[1])},
-        {'scale':2,   'y':(400,656), 'x':(0, src_img.shape[1])},
-        {'scale':2,   'y':(384,640), 'x':(0, src_img.shape[1])},
-        {'scale':3,   'y':(384,672), 'x':(32, src_img.shape[1])}
-    ]
-
-    for settings in iterations:
-        frame = np.copy(src_img)
-
-        title = "scale = {}, y_range = {} - {}, x_range = {} - {}".format(settings["scale"], settings["y"][0], settings["y"][1], settings["x"][0], settings["x"][1])
-        cv2.putText(frame, title, (20, 30), cv2.FONT_HERSHEY_PLAIN, 2.0, (0, 255, 255), 2)
-        cv2.line(frame, (0, settings["y"][0]), (frame.shape[1], settings["y"][0]), (0, 0, 255), 2)
-        cv2.line(frame, (0, settings["y"][1]), (frame.shape[1], settings["y"][1]), (0, 0, 255), 2)
-
-        for rect in detector.output_detection_windows(src_img, settings["x"], settings["y"], settings["scale"]):
-            cv2.rectangle(frame, rect[0], rect[1], (0, 255, 0), 2)
-            video_out.write(frame)
-            cv2.rectangle(frame, rect[0], rect[1], (255, 0, 0), 2)
-
-        for idx in range(5):
-            video_out.write(frame)
-    """
-
     iterations = [
-        {'size' :  64, 'y':(400,496), 'x':( 0, src_img.shape[1])},
-        {'size' :  96, 'y':(384,576), 'x':(32, src_img.shape[1])},
-        {'size' : 128, 'y':(400,656), 'x':( 0, src_img.shape[1])},
-        {'size' : 192, 'y':(384,672), 'x':(32, src_img.shape[1])}
+        {'size' :  64, 'y':(400,496), 'x':(400, src_img.shape[1])},
+        {'size' :  96, 'y':(384,576), 'x':( 32, src_img.shape[1])},
+        {'size' : 128, 'y':(400,656), 'x':(  0, src_img.shape[1])}
     ]
 
     for settings in iterations:
@@ -149,7 +121,7 @@ def main():
     
     # initialize car classifier and detector
     clf = CarClassifier.restore('classifier_svc.pkl')
-    detector = CarDetector(clf, heat_threshold=4, num_heat_frames=10)
+    detector = CarDetector(clf, heat_threshold=15, num_heat_frames=3)
 
     # debug visualization
     if DEBUG_VISUALIZE:
@@ -157,7 +129,7 @@ def main():
 
     # process video
     #process_video("test_video.mp4", detector, camera)
-    process_video("project_video.mp4", detector, camera, 600)
+    process_video("project_video.mp4", detector, camera, 0)
     #debug_output_search_windows("test_images/test1.jpg", detector, camera)
     #debug_output_search_windows("output_images/captured.jpg", detector, camera)
 

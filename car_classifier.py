@@ -21,7 +21,7 @@ class CarClassifier:
         # prepare the image to be classified (e.g color space conversion, image transformations)
         return cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
 
-    def extract_hog_features(self, img, feature_vector=True):
+    def extract_hog_features_opencv(self, img, feature_vector=True):
         channels = []
         img_h, img_w, img_d = img.shape
         block_size = (self.hog_cells_per_block * self.hog_pixels_per_cell, self.hog_cells_per_block * self.hog_pixels_per_cell)
@@ -42,7 +42,7 @@ class CarClassifier:
         
         return channels
     
-    def extract_hog_features_sklearn(self, img, feature_vector=True):
+    def extract_hog_features(self, img, feature_vector=True):
         features = []
 
         for channel in range(img.shape[2]):
@@ -63,7 +63,6 @@ class CarClassifier:
 
         # color histogram
         for channel in range(img.shape[2]):
-            # features.append(np.histogram(img[:,:,channel], bins=self.num_bins, range=(0,256))[0])
             features.append(cv2.calcHist([img], [channel], None, [self.num_bins], [0, 256]).ravel())
 
         return features
