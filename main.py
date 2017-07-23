@@ -35,7 +35,7 @@ def process_video(filename, car_detector, lane_detector, camera, start_frame=0):
         # run car detection pipeline
         car_detector.run(corrected)
 
-        # run lane detection pipeline
+        # run lane detector pipeline
         corrected = lane_detector.run(corrected)
 
         # draw rectangles around cars
@@ -86,14 +86,14 @@ def process_video(filename, car_detector, lane_detector, camera, start_frame=0):
 
     video_out.release()
 
-def debug_output_search_windows(filename, car_detector, camera):
+def debug_output_search_windows(filename, detector, camera):
     src_img = camera.undistort(cv2.imread(filename))
     video_out = cv2.VideoWriter('output_images/windows.avi', cv2.VideoWriter_fourcc(*'DIB '), 5.0, (1280,720))
 
     iterations = [
-        {'size' :  64, 'y':(400,496), 'x':(416, src_img.shape[1]), 'overlap':0.50},
-        {'size' :  96, 'y':(384,576), 'x':(224, src_img.shape[1]), 'overlap':0.50},
-        {'size' : 128, 'y':(400,656), 'x':( 0, src_img.shape[1]), 'overlap':0.75}
+        {'size' :  64, 'y':(400,496), 'x':(400, src_img.shape[1])},
+        {'size' :  96, 'y':(384,576), 'x':( 32, src_img.shape[1])},
+        {'size' : 128, 'y':(400,656), 'x':(  0, src_img.shape[1])}
     ]
 
     for settings in iterations:
@@ -104,7 +104,7 @@ def debug_output_search_windows(filename, car_detector, camera):
         cv2.line(frame, (0, settings["y"][0]), (frame.shape[1], settings["y"][0]), (0, 0, 255), 2)
         cv2.line(frame, (0, settings["y"][1]), (frame.shape[1], settings["y"][1]), (0, 0, 255), 2)
 
-        for w in car_detector.sliding_windows(settings['x'], settings['y'], settings['size'], settings['overlap']):
+        for w in detector.sliding_windows(settings['x'], settings['y'], settings['size'], 0.5):
             cv2.rectangle(frame, w[0], w[1], (0, 255, 0), 2)
             video_out.write(frame)
             cv2.rectangle(frame, w[0], w[1], (255, 0, 0), 2)
@@ -123,8 +123,8 @@ def main():
         print("ERROR LOADING CAMERA CALIBRATION")
     
     # initialize car classifier and detector
-    clf = CarClassifier.restore('classifier.h5')
-    car_detector = CarDetector(clf, heat_threshold=75, num_heat_frames=5)
+    clf = CarClassifier.restore('classifier_svc.pkl')
+    car_detector = CarDetector(clf, heat_threshold=50, num_heat_frames=5)
 
     # initialize lane detector
     lane_detector = LaneDetectionPipeline()
@@ -134,10 +134,10 @@ def main():
         cv2.namedWindow(DEBUG_WINDOW)
 
     # process video
-    process_video("project_video.mp4", car_detector, lane_detector, camera)
-    #debug_output_search_windows("test_images/test1.jpg", detector, camera)
-
-    #process_video("../CarND-Advanced-Lane-Lines/challenge_video.mp4", detector, camera)
+    #process_video("test_video.mp4", car_detector, lane_detector, camera)
+    #process_video("project_video.mp4", car_detector, lane_detector, camera, 00)
+    debug_output_search_windows("test_images/test1.jpg", car_detector, camera)
+    #debug_output_search_windows("output_images/captured.jpg", car_detector, camera)
 
     cv2.destroyAllWindows()
 
