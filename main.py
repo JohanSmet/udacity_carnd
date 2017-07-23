@@ -135,8 +135,8 @@ def main():
 
     # process video
     #process_video("test_video.mp4", car_detector, lane_detector, camera)
-    #process_video("project_video.mp4", car_detector, lane_detector, camera, 00)
-    debug_output_search_windows("test_images/test1.jpg", car_detector, camera)
+    process_video("project_video.mp4", car_detector, lane_detector, camera, 0)
+    #debug_output_search_windows("test_images/test1.jpg", car_detector, camera)
     #debug_output_search_windows("output_images/captured.jpg", car_detector, camera)
 
     cv2.destroyAllWindows()

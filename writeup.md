@@ -69,7 +69,7 @@ I tried using the sub-sampling approach covered in the lecture to optimize the p
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./output_images/project_video_processed.mp4). It's also available on YouTube:
+Here's a [link to my video result](https://cdn.rawgit.com/JohanSmet/CarND-Vehicle-Detection/ad1f0d2d/output_images/project_video_processed.mp4). It's also available on YouTube:
 
 [![Project Video](https://img.youtube.com/vi/MvKrEurBpF0/0.jpg)](https://www.youtube.com/watch?v=MvKrEurBpF0)
 
