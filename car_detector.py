@@ -114,7 +114,7 @@ class CarDetector:
         draw_img = np.copy(img)
 
         for rect in self.car_rects:
-            cv2.rectangle(draw_img, (rect[0], rect[1]), (rect[2], rect[3]), (255, 0, 0), 5)
+            cv2.rectangle(draw_img, (rect[0], rect[1]), (rect[2], rect[3]), (255, 0, 0), 10)
 
         return draw_img
 
