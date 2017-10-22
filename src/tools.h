@@ -5,35 +5,24 @@
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
-using namespace std;
 
-class Tools {
-public:
+namespace Tools {
+
   /**
-  * Constructor.
+  * A function to calculate RMSE.
   */
-  Tools();
+  VectorXd CalculateRMSE(const std::vector<VectorXd> &estimations, const std::vector<VectorXd> &ground_truth);
 
   /**
-  * Destructor.
-  */
-  virtual ~Tools();
-
-  /**
-  * A helper method to calculate RMSE.
-  */
-  VectorXd CalculateRMSE(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth);
-
-  /**
-  * A helper method to calculate Jacobians.
+  * A function to calculate Jacobians.
   */
   MatrixXd CalculateJacobian(const VectorXd& x_state);
 
   /**
-   * A helper method to normalize angles to the range -pi to pi
+   * A function to normalize angles to the range -pi to pi
    */
-  static float NormalizeAngle(float angle); 
+  float NormalizeAngle(float angle); 
 
-};
+} // namespace Tools
 
 #endif /* TOOLS_H_ */
