@@ -1,3 +1,21 @@
+# Extended Kalman Filter Project
+## Self-Driving Car Engineer Nanodegree Program
+
+This repository contains my implementation of an extended Kalman filter for the Udacity Self-Driving Car Engineer Nanodegree Program. 
+
+The implementation uses the starter code provided by Udacity as the starting point and fills in the gaps. Just a small amount of refactoring has been done.
+
+[image1]: ./Docs/01_results.png "Results"
+
+## Results
+
+![alt text][image1]
+
+---
+Original README.md follows below
+
+---
+
 # Extended Kalman Filter Project Starter Code
 Self-Driving Car Engineer Nanodegree Program
 
