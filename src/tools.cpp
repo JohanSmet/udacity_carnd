@@ -5,11 +5,9 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::vector;
 
-Tools::Tools() {}
+namespace Tools {
 
-Tools::~Tools() {}
-
-VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
+VectorXd CalculateRMSE(const vector<VectorXd> &estimations,
                               const vector<VectorXd> &ground_truth) {
 
   VectorXd rmse(4);
@@ -36,7 +34,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
 	return rmse;
 }
 
-MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
+MatrixXd CalculateJacobian(const VectorXd& x_state) {
 
 	MatrixXd Hj(3,4);
 
@@ -53,7 +51,7 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
 
 	// check division by zero
 	if(fabs(c1) < 0.0001) {
-		cout << "CalculateJacobian () - Error - Division by Zero" << endl;
+		std::cerr << "CalculateJacobian () - Error - Division by Zero" << std::endl;
 		Hj = MatrixXd::Zero(3,4);
 		return Hj;
 	}
@@ -66,7 +64,7 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
 	return Hj;
 }
 
-float Tools::NormalizeAngle(float angle) {
+float NormalizeAngle(float angle) {
 	float result = angle;
 	
 	while (result < - M_PI)
@@ -77,3 +75,5 @@ float Tools::NormalizeAngle(float angle) {
 	
 	return result;
 }
+
+} // namespace Tools
