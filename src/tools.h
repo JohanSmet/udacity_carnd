@@ -5,25 +5,14 @@
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
-using namespace std;
 
-class Tools {
-public:
-  /**
-  * Constructor.
-  */
-  Tools();
+namespace Tools {
 
   /**
-  * Destructor.
+  * A helper function to calculate RMSE.
   */
-  virtual ~Tools();
+  VectorXd CalculateRMSE(const std::vector<VectorXd> &estimations, const std::vector<VectorXd> &ground_truth);
 
-  /**
-  * A helper method to calculate RMSE.
-  */
-  VectorXd CalculateRMSE(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth);
-
-};
+} // namespace Tools
 
 #endif /* TOOLS_H_ */
