@@ -1,5 +1,6 @@
 #include <uWS/uWS.h>
 #include <iostream>
+#include <fstream>
 #include "json.hpp"
 #include <math.h>
 #include "ukf.h"
@@ -26,6 +27,38 @@ std::string hasData(std::string s) {
   return "";
 }
 
+static const char *FILENAME_STATS = "stats.csv";
+
+void clear_statistics() {
+  auto out_file = ofstream(FILENAME_STATS, ios::trunc);
+  out_file << "timestamp;" 
+           << "sensor_type;"
+           << "gt-x;"
+           << "gt-y;"
+           << "est-x;"
+           << "est-y;"
+           << "NIS-laser;"
+           << "NIS-radar"
+           << endl;
+  out_file.close();
+}
+
+void dump_statistics(const UKF &ukf, const VectorXd &gt, MeasurementPackage &meas_package) {
+  auto out_file = ofstream(FILENAME_STATS, ios::app);
+  out_file << meas_package.timestamp_ << ";" 
+           << meas_package.sensor_type_ << ";"
+           << gt(0) << ";"
+           << gt(1) << ";"
+           << ukf.x_(0) << ";"
+           << ukf.x_(1) << ";"
+           << ukf.NIS_laser_ << ";"
+           << ukf.NIS_radar_ 
+           << endl;
+
+  out_file.close();
+}
+
+
 int main()
 {
   uWS::Hub h;
@@ -36,6 +69,9 @@ int main()
   // used to compute the RMSE later
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
+
+  // start statistics dump
+  clear_statistics();
 
   h.onMessage([&ukf,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -126,7 +162,9 @@ int main()
     	  
     	  estimations.push_back(estimate);
 
-    	  VectorXd RMSE = Tools::CalculateRMSE(estimations, ground_truth);
+        VectorXd RMSE = Tools::CalculateRMSE(estimations, ground_truth);
+        
+        dump_statistics(ukf, gt_values, meas_package);
 
           json msgJson;
           msgJson["estimate_x"] = p_x;
