@@ -57,6 +57,10 @@ UKF::UKF() {
 
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
+  // initial NIS values
+  NIS_laser_ = 0.0;
+  NIS_radar_ = 0.0;
+
   /**
   TODO:
 
@@ -174,13 +178,16 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   R << std_laspx_ * std_laspx_, 0,
        0, std_laspy_ * std_laspy_;
 
-  VectorXd y = meas_package.raw_measurements_ - H * x_;
+  VectorXd z_diff = meas_package.raw_measurements_ - H * x_;
   MatrixXd S = H * P_ * Ht + R;
   MatrixXd K = P_ * Ht * S.inverse();
 
   // new state
-  x_ = x_ + (K * y);
+  x_ = x_ + (K * z_diff);
   P_ -= K * H * P_;
+
+  // calculate NIS
+  NIS_laser_ = z_diff.transpose() * S.inverse() * z_diff;
 }
 
 /**
@@ -218,6 +225,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   // update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
+
+  // calculate NIS
+  NIS_radar_ = z_diff.transpose() * S.inverse() * z_diff;
 }
 
 void UKF::InitWeights() {
