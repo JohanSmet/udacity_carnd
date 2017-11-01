@@ -1,3 +1,33 @@
+# Unscented Kalman Filter Project
+## Self-Driving Car Engineer Nanodegree Program
+
+This repository contains my implementation of an unscented Kalman filter for the Udacity Self-Driving Car Engineer Nanodegree Program. 
+
+The implementation uses the starter code provided by Udacity as the starting point and fills in the gaps. A small amount of refactoring has been done. Some obvious duplicated calculations are still in the implementation. I felt making and testing these would add little to the experience and my time would be better spend moving on to the next subject.
+
+[image1]: ./docs/dataset1_result.png "Results of the first dataset"
+[image2]: ./docs/dataset1_nis_laser.png "NIS graph for laser of first dataset"
+[image3]: ./docs/dataset1_nis_radar.png "NIS graph for radar of first dataset"
+
+[image4]: ./docs/dataset2_result.png "Results of the second dataset"
+[image5]: ./docs/dataset2_nis_laser.png "NIS graph for laser of second dataset"
+[image6]: ./docs/dataset2_nis_radar.png "NIS graph for radar of second dataset"
+
+## Results for the first dataset
+![alt text][image1]
+![alt text][image2]
+![alt text][image3]
+
+## Results for the second dataset
+![alt text][image4]
+![alt text][image5]
+![alt text][image6]
+
+---
+Original README.md follows below
+
+---
+
 # Unscented Kalman Filter Project Starter Code
 Self-Driving Car Engineer Nanodegree Program
 
