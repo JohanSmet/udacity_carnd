@@ -8,6 +8,11 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
+//////////////////////////////////////////////////////////////////////////////////////
+//
+// INTERFACE FUNCTIONS
+//
+
 /**
  * Initializes Unscented Kalman filter
  */
@@ -22,11 +27,17 @@ UKF::UKF() {
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
+  // state dimension
+  n_x_ = 5;
+
+  // augmented state dimension
+  n_aug_ = 7;
+
   // initial state vector
-  x_ = VectorXd(5);
+  x_ = VectorXd(n_x_);
 
   // initial covariance matrix
-  P_ = MatrixXd(5, 5);
+  P_ = MatrixXd(n_x_, n_x_);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 2;
@@ -49,25 +60,18 @@ UKF::UKF() {
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
-  // state dimension
-  n_x_ = 5;
-  n_aug_ = 7;
+  // sigma point Lambda
   lambda_ = 3 - n_x_;
+
+  // initialize sigma point weights
   InitWeights();
 
+  // predicted sigma points
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
   // initial NIS values
   NIS_laser_ = 0.0;
   NIS_radar_ = 0.0;
-
-  /**
-  TODO:
-
-  Complete the initialization. See ukf.h for other member properties.
-
-  Hint: one or more values initialized above might be wildly off...
-  */
 }
 
 UKF::~UKF() {}
@@ -77,15 +81,11 @@ UKF::~UKF() {}
  * either radar or laser.
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
 
   ///////////////////////////////////////////////////////////////////////////////
+  //
   // initialization
+  //
 
   if (!is_initialized_) {
     P_ = MatrixXd::Identity(P_.rows(), P_.cols());
@@ -103,11 +103,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     time_us_ = meas_package.timestamp_;
 
     is_initialized_ = true;
-    return;
+    return;                                     // exit !!!
   }
 
   ///////////////////////////////////////////////////////////////////////////////
+  //
   // prediction
+  //
 
   float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
   time_us_ = meas_package.timestamp_;
@@ -115,7 +117,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Prediction(delta_t);
 
   ///////////////////////////////////////////////////////////////////////////////
-  // update
+  //
+  // measurement update
+  //
 
   if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
     UpdateLidar(meas_package);
@@ -132,12 +136,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-  /**
-  TODO:
-
-  Complete this function! Estimate the object's location. Modify the state
-  vector, x_. Predict sigma points, the state, and the state covariance matrix.
-  */
 
   // generate sigma points
   MatrixXd Xsig = MatrixXd(n_aug_, 2 * n_aug_ + 1);
@@ -155,14 +153,6 @@ void UKF::Prediction(double delta_t) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateLidar(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Use lidar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the lidar NIS.
-  */
 
   if (!use_laser_)
     return;
@@ -195,22 +185,15 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Use radar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the radar NIS.
-  */
 
   if (!use_radar_)
     return;
 
-  auto z_pred = VectorXd(3);
-  auto S = MatrixXd(3, 3);
-  auto Zsig = MatrixXd(3, Xsig_pred_.cols());
-  auto Tc = MatrixXd(n_x_, 3);
+  auto n_z = 3;
+  auto z_pred = VectorXd(n_z);
+  auto S = MatrixXd(n_z, n_z);
+  auto Zsig = MatrixXd(n_z, Xsig_pred_.cols());
+  auto Tc = MatrixXd(n_x_, n_z);
 
   PredictRadarMeasurement(Zsig, z_pred, S);
   CrossCorrelationMatrix(Zsig, z_pred, Tc);
@@ -229,6 +212,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   // calculate NIS
   NIS_radar_ = z_diff.transpose() * S.inverse() * z_diff;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////
+//
+// HELPER FUNCTIONS
+//
 
 void UKF::InitWeights() {
   weights_ = VectorXd(2 * n_aug_ + 1);
@@ -290,33 +278,33 @@ void UKF::PredictSigmaPoints(const MatrixXd &Xsig_aug, double delta_t, MatrixXd 
     auto px   = Xsig_aug(0, i);
     auto py   = Xsig_aug(1, i);
     auto v    = Xsig_aug(2, i);
-    auto psi  = Xsig_aug(3, i); 
-    auto psid = Xsig_aug(4, i);
+    auto yaw  = Xsig_aug(3, i); 
+    auto yawd = Xsig_aug(4, i);
     auto na   = Xsig_aug(5, i);
-    auto npsi = Xsig_aug(6, i);
+    auto nyaw = Xsig_aug(6, i);
     
     VectorXd v1 = VectorXd(n_x_);
     VectorXd v2 = VectorXd(n_x_);
     
-    if (fabs(psid) > 0.0001) {
-      v1 << (v / psid) * (sin(psi + psid * delta_t) - sin(psi)),
-            (v / psid) * (-cos(psi + psid * delta_t) + cos(psi)),
+    if (fabs(yawd) > 0.0001) {
+      v1 << (v / yawd) * (sin(yaw + yawd * delta_t) - sin(yaw)),
+            (v / yawd) * (-cos(yaw + yawd * delta_t) + cos(yaw)),
             0, 
-            psid * delta_t,
+            yawd * delta_t,
             0;
     } else {
-      v1 << v * cos(psi) * delta_t,
-            v * sin(psi) * delta_t,
+      v1 << v * cos(yaw) * delta_t,
+            v * sin(yaw) * delta_t,
             0,
-            psid * delta_t,
+            yawd * delta_t,
             0;
     }
     
-    v2 << 0.5 * delta_t * delta_t * cos(psi) * na,
-          0.5 * delta_t * delta_t * sin(psi) * na,
+    v2 << 0.5 * delta_t * delta_t * cos(yaw) * na,
+          0.5 * delta_t * delta_t * sin(yaw) * na,
           delta_t * na,
-          0.5 * delta_t * delta_t * npsi,
-          delta_t * npsi;
+          0.5 * delta_t * delta_t * nyaw,
+          delta_t * nyaw;
           
     Xsig_pred.col(i) = Xsig_aug.col(i).head(n_x_) + v1 + v2;
   }
