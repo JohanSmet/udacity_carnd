@@ -1,0 +1,53 @@
+{
+  "variant": {
+    "label": "Debug",
+    "keywordSettings": {
+      "buildType": "debug"
+    },
+    "description": "Emit debug information without performing optimizations"
+  },
+  "activeEnvironments": [],
+  "codeModel": {
+    "configurations": [
+      {
+        "name": "Debug",
+        "projects": [
+          {
+            "buildDirectory": "/home/johan/carnd/CarND-Kidnapped-Vehicle-Project/build",
+            "name": "PARTICLE_FILTER",
+            "sourceDirectory": "/home/johan/carnd/CarND-Kidnapped-Vehicle-Project",
+            "targets": [
+              {
+                "artifacts": [
+                  "/home/johan/carnd/CarND-Kidnapped-Vehicle-Project/build/particle_filter"
+                ],
+                "buildDirectory": "/home/johan/carnd/CarND-Kidnapped-Vehicle-Project/build",
+                "fileGroups": [
+                  {
+                    "compileFlags": "-g   -std=c++11",
+                    "isGenerated": false,
+                    "language": "CXX",
+                    "sources": [
+                      "src/particle_filter.cpp",
+                      "src/main.cpp"
+                    ]
+                  }
+                ],
+                "fullName": "particle_filter",
+                "linkLanguageFlags": "-g",
+                "linkLibraries": "-lz -lssl -luv -luWS",
+                "linkerLanguage": "CXX",
+                "name": "particle_filter",
+                "sourceDirectory": "/home/johan/carnd/CarND-Kidnapped-Vehicle-Project",
+                "type": "EXECUTABLE"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "cookie": "0.8159776329064787",
+    "inReplyTo": "codemodel",
+    "type": "reply"
+  }
+}
