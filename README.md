@@ -1,3 +1,14 @@
+# Localization using particle filters
+## Udacity Self-Driving Car Engineer Nanodegree Program
+
+This repository contains my implementation of a particle filter for the Udacity Self-Driving Car Engineer Nanodegree Program. The project uses the Udacity startert code as a basis, only particle_filter.cpp and the corresponding header file have been altered by me.
+
+---
+Original README.md follows below
+
+---
+
+
 # Overview
 This repository contains all the code needed to complete the final project for the Localization course in Udacity's Self-Driving Car Nanodegree.
 
