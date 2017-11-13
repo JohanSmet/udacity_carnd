@@ -1,36 +1,41 @@
 #include "PID.h"
 
-using namespace std;
+namespace {
 
-/*
-* TODO: Complete the PID class.
-*/
+enum COEFFICIENTS {
+  C_P = 0,
+  C_I = 1,
+  C_D = 2
+};
 
-PID::PID() : p_error(0), i_error(0), d_error(0) {
+} // unnamed namespace
 
+PID::PID() :  m_errors{0.0,0.0,0.0},
+              m_coeffs{0.0,0.0,0.0} {
 }
 
 PID::~PID() {
-
 }
 
 void PID::Init(double p_Kp, double p_Ki, double p_Kd) {
-  Kp = p_Kp;
-  Ki = p_Ki;
-  Kd = p_Kd;
+  m_coeffs[C_P] = p_Kp;
+  m_coeffs[C_I] = p_Ki;
+  m_coeffs[C_D] = p_Kd;
 }
 
 void PID::UpdateError(double p_cte) {
-  d_error = p_cte - p_error;
-  p_error = p_cte;
-  i_error += p_cte;
+  m_errors[C_D] = p_cte - m_errors[C_P];
+  m_errors[C_P] = p_cte;
+  m_errors[C_I] += p_cte;
 }
 
 double PID::ControlValue() const {
-  return - (p_error * Kp) - (d_error * Kd) - (i_error * Ki);
+  return - m_errors[C_P] * m_coeffs[C_P]
+         - m_errors[C_D] * m_coeffs[C_D]
+         - m_errors[C_I] * m_coeffs[C_I];
 }
 
 double PID::TotalError() {
-  return 0;
+  return m_errors[C_P] + m_errors[C_I] + m_errors[C_D];
 }
 
