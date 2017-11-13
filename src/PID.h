@@ -30,12 +30,14 @@ public:
   /*
   * Initialize PID.
   */
-  void Init(double Kp, double Ki, double Kd);
+  void Init(double p_Kp, double p_Ki, double p_Kd);
 
   /*
   * Update the PID error variables given cross track error.
   */
-  void UpdateError(double cte);
+  void UpdateError(double p_cte);
+
+  double ControlValue() const;
 
   /*
   * Calculate the total PID error.
