@@ -1,3 +1,43 @@
+# PID controllers
+## Udacity Self-Driving Car Engineer Nanodegree Program
+
+This repository contains my implementation of a PID controller for the Udacity Self-Driving Car Engineer Nanodegree Program. The project uses the Udacity starter code as a basis, only PID.cpp and the corresponding header file have been altered by me.
+
+## Reflection
+
+### 1. Describe the effect each of the P, I, D components had in your implementation.
+
+The **'P'roportional** component sets the steering value to a multiple of the current error by multiplying with a constant gain Kp. This means that the further the car is from the desired trajectory the harder it will steer towards the desired trajectory. When the gain is too low it will take long to reach the desired trajectory, when the gain is to high the car will have a tendency to overshoot and oscillate between the two sides of the desired trajectory.
+
+An example of the behavior of a P-controller can be seen in the next video on YouTube (click the image):
+
+[![P-controller](https://img.youtube.com/vi/g6x-cP5WO8o/0.jpg)](https://www.youtube.com/watch?v=g6x-cP5WO8o)
+
+The **'D'erivative** component takes the slope of the change in error-value into account. This will cause the car to steer less as the error decreasing reducing the overshooting and oscillation as encountered with a simple P-controller.
+
+The **'I'ntegral** component uses the surface area between the path of the car and the desired trajectory. This is used to correct noise or errors (e.g. misaligned wheels). When the cars follows the desired trajectory pretty closely the area between the car's trajectory and above and below the desired trajectory will cancel each other out. When there's an deviation for a while the area on one side will keep getting bigger until the I-component kicks in and starts correcting the error.
+
+This is a video of the completely tuned PID-controller completing a lap in the simulator (click the image):
+[![Full lap](https://img.youtube.com/vi/9kLyZjNEFlc/0.jpg)](https://www.youtube.com/watch?v=9kLyZjNEFlc)
+
+### 2. Describe how the final hyperparameters were chosen.
+I started by implementing the PID controller with the hyperparameters used in the lecture. When the PID controller was functioning as desired I added a twiddle routine to find more optimal hyperparameters. 
+
+At first is set them all to 1 to let the twiddle-algorithm do its thing. But the car crashed rather quickly and this made this procedure rather tedious. I went back to my original hyperparameters (same as in the lecture). The car made it around the track with these and I used the twiddle-algorithm to optimize them.
+
+In the beginning I let each cycle of the twiddle-algorithm run for 100 cycles but I found this to optimize for certain parts of the track and made performance on other parts worse. I increased the number of cycles to 2000 to take in account the majority of the track. Also I disregarded the first 100 samples to eliminate interference of the previous hyperparameters in the new measurements. I let this run for about two hours to arrive at the current hyperparameters:
+- Kp = 0.226939
+- Ki = 0.00397376
+- Kd = 3.3
+
+
+---
+Original README.md follows below:
+
+---
+
+
+
 # CarND-Controls-PID
 Self-Driving Car Engineer Nanodegree Program
 
