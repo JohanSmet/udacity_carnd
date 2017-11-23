@@ -65,6 +65,28 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
+Eigen::VectorXd polyfit(const std::vector<double> &xvals, const std::vector<double> &yvals, int order) {
+  return polyfit(Eigen::Map<const Eigen::VectorXd>(xvals.data(), xvals.size()),
+                 Eigen::Map<const Eigen::VectorXd>(yvals.data(), yvals.size()), 
+                 order);
+}
+
+void transform_to_car_coordinates(double px, double py, double psi,
+                                  const vector<double> &ptsx, const vector<double> &ptsy,
+                                  vector<double> &ptsx_car, vector<double> &ptsy_car) {
+
+  for (size_t idx=0; idx < ptsx.size(); ++idx) {
+    auto dx = ptsx[idx] - px;   
+    auto dy = ptsy[idx] - py;   
+    auto cos_psi = cos(-psi);
+    auto sin_psi = sin(-psi);
+
+    ptsx_car.push_back((dx * cos_psi) - (dy * sin_psi));
+    ptsy_car.push_back((dx * sin_psi) + (dy * cos_psi));
+  }
+}
+
+
 int main() {
   uWS::Hub h;
 
@@ -91,6 +113,15 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+
+          // convert the trajectory waypoints from map/world coordinates to the car's coordinate system
+          vector<double> ptsx_car;
+          vector<double> ptsy_car;
+
+          transform_to_car_coordinates(px, py, psi, ptsx, ptsy, ptsx_car, ptsy_car);
+
+          // fit a 3rd order polynomial to the trajectory points
+          auto coeffs = polyfit(ptsx_car, ptsy_car, 3);
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -123,6 +154,12 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
+          for (double x = 0; x < 100; x += 5) {
+            next_x_vals.push_back(x);
+            next_y_vals.push_back(polyeval(coeffs, x));
+          }
+
+
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
