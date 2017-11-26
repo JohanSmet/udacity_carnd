@@ -2,12 +2,13 @@
 #include <cppad/cppad.hpp>
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
+#include <limits>
 
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 0;
-double dt = 0;
+const size_t N = 10;
+const double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -21,6 +22,33 @@ double dt = 0;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
+// reference speed
+const double ref_v = 30;
+
+// ranges of variables in the arrays
+const size_t X_FST = 0;
+const size_t X_LST = X_FST + N - 1;
+const size_t Y_FST = X_LST + 1;
+const size_t Y_LST = Y_FST + N - 1;
+const size_t PSI_FST = Y_LST + 1;
+const size_t PSI_LST = PSI_FST + N - 1;
+const size_t V_FST = PSI_LST + 1;
+const size_t V_LST = V_FST + N - 1;
+const size_t CTE_FST = V_LST + 1;
+const size_t CTE_LST = CTE_FST + N - 1;
+const size_t EPSI_FST = CTE_LST + 1;
+const size_t EPSI_LST = EPSI_FST + N - 1;
+const size_t DELTA_FST = EPSI_LST + 1;
+const size_t DELTA_LST = DELTA_FST + N - 2;
+const size_t A_FST = DELTA_LST + 1;
+const size_t A_LST = A_FST + N - 2;
+
+const size_t STATE_FST = X_FST;
+const size_t STATE_LST = EPSI_LST;
+const size_t ACTUATOR_FST = DELTA_FST;
+const size_t ACTUATOR_LST = A_LST;
+
+
 class FG_eval {
  public:
   // Fitted polynomial coefficients
@@ -33,6 +61,71 @@ class FG_eval {
     // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
     // NOTE: You'll probably go back and forth between this function and
     // the Solver function below.
+    fg[0] = 0;
+
+    // the cost based on the reference state 
+    for (auto t = 0ul; t < N; ++t) {
+      fg[0] += CppAD::pow(vars[CTE_FST + t], 2);    
+      fg[0] += CppAD::pow(vars[EPSI_FST + t], 2);
+      fg[0] += CppAD::pow(vars[V_FST + t] - ref_v, 2);
+    }
+
+    // minimize the use of actuators.
+    for (auto t = 0ul; t < N - 1; t++) {
+      fg[0] += CppAD::pow(vars[DELTA_FST + t], 2);
+      fg[0] += CppAD::pow(vars[A_FST + t], 2);
+    }
+
+    // minimize the value gap between sequential actuations.
+    for (auto t = 0ul; t < N - 2; t++) {
+      fg[0] += CppAD::pow(vars[DELTA_FST + t + 1] - vars[DELTA_FST + t], 2);
+      fg[0] += CppAD::pow(vars[A_FST + t + 1] - vars[A_FST + t], 2);
+    }
+
+    // setup constraints
+
+    // >> set initial constraints
+    fg[1 + X_FST] = vars[X_FST];
+    fg[1 + Y_FST] = vars[Y_FST];
+    fg[1 + PSI_FST] = vars[PSI_FST];
+    fg[1 + V_FST] = vars[V_FST];
+    fg[1 + CTE_FST] = vars[CTE_FST];
+    fg[1 + EPSI_FST] = vars[EPSI_FST];
+
+    // >> set constraints for all the steps of the predicted path
+    for (auto t= 1ul; t < N; ++t) {
+
+      // the state at the next timestep
+      auto x1 = vars[X_FST + t];
+      auto y1 = vars[Y_FST + t];
+      auto psi1 = vars[PSI_FST + t];
+      auto v1 = vars[V_FST + t];
+      auto cte1 = vars[CTE_FST + t];
+      auto epsi1 = vars[EPSI_FST + t];
+
+      // the state at the current timestep
+      auto x0 = vars[X_FST + t - 1];
+      auto y0 = vars[Y_FST + t - 1];
+      auto psi0 = vars[PSI_FST + t - 1];
+      auto v0 = vars[V_FST + t - 1];
+      auto cte0 = vars[CTE_FST + t - 1];
+      auto epsi0 = vars[EPSI_FST + t - 1];
+
+      auto delta0 = vars[DELTA_FST + t - 1];
+      auto a0 = vars[A_FST + t - 1];
+
+      // compute trajectory and derivative at current timestep
+      auto f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * CppAD::pow(x0, 2) + coeffs[3] * CppAD::pow(x0, 3);
+      auto psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * CppAD::pow(x0, 2));
+
+      // apply the vehicle model to predict the state at the next timestemp
+      fg[1 + X_FST + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+      fg[1 + Y_FST + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+      fg[1 + PSI_FST + t] = psi1 - (psi0 - v0/Lf * delta0 * dt);
+      fg[1 + V_FST + t] = v1 - (v0 + a0 * dt);
+      fg[1 + CTE_FST + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + EPSI_FST + t] = epsi1 - ((psi0 - psides0) - v0/Lf * delta0 * dt);
+    }
   }
 };
 
@@ -44,37 +137,82 @@ MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
-  size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
+
+  const auto x = state[0];
+  const auto y = state[1];
+  const auto psi = state[2];
+  const auto v = state[3];
+  const auto cte = state[4];
+  const auto epsi = state[5];
 
   // TODO: Set the number of model variables (includes both states and inputs).
   // For example: If the state is a 4 element vector, the actuators is a 2
   // element vector and there are 10 timesteps. The number of variables is:
   //
   // 4 * 10 + 2 * 9
-  size_t n_vars = 0;
+  size_t n_vars = (6 * N) + (2 * (N-1));
   // TODO: Set the number of constraints
-  size_t n_constraints = 0;
+  size_t n_constraints = 6 * N;
 
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
-  for (int i = 0; i < n_vars; i++) {
+  for (size_t i = 0; i < n_vars; i++) {
     vars[i] = 0;
   }
 
+  vars[X_FST] = x;
+  vars[Y_FST] = y;
+  vars[PSI_FST] = psi;
+  vars[V_FST] = v;
+  vars[CTE_FST] = cte;
+  vars[EPSI_FST] = epsi;
+
+  // TODO: Set lower and upper limits for variables.
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
-  // TODO: Set lower and upper limits for variables.
+
+  // set all non-actuators upper and lowerlimits to min & max values
+  for (size_t i = STATE_FST; i <= STATE_LST; ++i) {
+    vars_lowerbound[i] = -std::numeric_limits<double>::max();
+    vars_upperbound[i] = std::numeric_limits<double>::max();
+  }
+
+  // the upper and lower limits for the steering (delta) are -25 to 25 degrees
+  for (size_t i = DELTA_FST; i <= DELTA_LST; ++i) {
+    vars_lowerbound[i] = -0.436332;
+    vars_upperbound[i] = 0.436332;
+  }
+
+  // the upper and lower limits for the acceleration are -1 and 1
+  for (size_t i = A_FST; i <= A_LST; ++i) {
+    vars_lowerbound[i] = -1;
+    vars_upperbound[i] = 1;
+  }
 
   // Lower and upper limits for the constraints
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
-  for (int i = 0; i < n_constraints; i++) {
+  for (auto i = 0ul; i < n_constraints; i++) {
     constraints_lowerbound[i] = 0;
     constraints_upperbound[i] = 0;
   }
+
+  constraints_lowerbound[X_FST] = x;
+  constraints_lowerbound[Y_FST] = y;
+  constraints_lowerbound[PSI_FST] = psi;
+  constraints_lowerbound[V_FST] = v;
+  constraints_lowerbound[CTE_FST] = cte;
+  constraints_lowerbound[EPSI_FST] = epsi;
+
+  constraints_upperbound[X_FST] = x;
+  constraints_upperbound[Y_FST] = y;
+  constraints_upperbound[PSI_FST] = psi;
+  constraints_upperbound[V_FST] = v;
+  constraints_upperbound[CTE_FST] = cte;
+  constraints_upperbound[EPSI_FST] = epsi;
 
   // object that computes objective and constraints
   FG_eval fg_eval(coeffs);
@@ -117,5 +255,13 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {};
+  std::vector<double> result = {solution.x[DELTA_FST], solution.x[A_FST]};
+
+  // also add the predicted x/y values to be visualised
+  for (auto i=0ul; i<N-1; ++i) {
+    result.push_back(solution.x[X_FST + i + 1]);
+    result.push_back(solution.x[Y_FST + i + 1]);
+  }
+
+  return result;
 }

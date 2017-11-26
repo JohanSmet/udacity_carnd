@@ -123,19 +123,24 @@ int main() {
           // fit a 3rd order polynomial to the trajectory points
           auto coeffs = polyfit(ptsx_car, ptsy_car, 3);
 
-          /*
-          * TODO: Calculate steering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
-          */
-          double steer_value;
-          double throttle_value;
+          // compute cross track error and heading error (coeffs being in car space simplifies these equations)
+          double cte = polyeval(coeffs, px);
+          double epsi = - atan(coeffs[1]);
+          
+          // build state vector
+          Eigen::VectorXd state(6);
+          state << 0, 0, 0, v, cte, epsi;
 
+          // calculate steering angle, throttle and predicted path using MPC
+          auto vars = mpc.Solve(state, coeffs);
+          double steer_value = vars[0];
+          double throttle_value = vars[1];
+
+          // return the data to the simulator
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+          msgJson["steering_angle"] = steer_value / deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
@@ -144,6 +149,10 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
+          for (auto i=2ul; i < vars.size(); i += 2) {
+            mpc_x_vals.push_back(vars[i]);
+            mpc_y_vals.push_back(vars[i+1]);
+          }
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
@@ -158,8 +167,6 @@ int main() {
             next_x_vals.push_back(x);
             next_y_vals.push_back(polyeval(coeffs, x));
           }
-
-
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
