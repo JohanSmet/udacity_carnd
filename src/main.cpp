@@ -121,7 +121,8 @@ int main() {
           px += v * cos(psi) * latency;
           py += v * sin(psi) * latency;
           psi -= v / 2.67 * (delta * deg2rad(25)) * latency;
-          v += a * latency;
+          // no update for speed because we don't really know the current acceleration (!= throttle).
+          //  this should not be a problem due to the relatively small magnitude of the acceleration
 
           // convert the trajectory waypoints from map/world coordinates to the car's coordinate system
           vector<double> ptsx_car;
