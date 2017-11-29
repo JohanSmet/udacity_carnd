@@ -10,18 +10,6 @@ using CppAD::AD;
 const size_t N = 10;
 const double dt = 0.075;
 
-// This value assumes the model presented in the classroom is used.
-//
-// It was obtained by measuring the radius formed by running the vehicle in the
-// simulator around in a circle with a constant steering angle and velocity on a
-// flat terrain.
-//
-// Lf was tuned until the the radius formed by the simulating the model
-// presented in the classroom matched the previous radius.
-//
-// This is the length from front to CoG that has a similar radius.
-const double Lf = 2.67;
-
 // reference speed
 const double ref_v = 50;
 
@@ -57,7 +45,6 @@ class FG_eval {
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   void operator()(ADvector& fg, const ADvector& vars) {
-    // TODO: implement MPC
     // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
     // NOTE: You'll probably go back and forth between this function and
     // the Solver function below.
@@ -123,10 +110,10 @@ class FG_eval {
       // apply the vehicle model to predict the state at the next timestemp
       fg[1 + X_FST + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + Y_FST + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + PSI_FST + t] = psi1 - (psi0 - v0/Lf * delta0 * dt);
+      fg[1 + PSI_FST + t] = psi1 - (psi0 - v0/MPC::Lf * delta0 * dt);
       fg[1 + V_FST + t] = v1 - (v0 + a0 * dt);
       fg[1 + CTE_FST + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[1 + EPSI_FST + t] = epsi1 - ((psi0 - psides0) - v0/Lf * delta0 * dt);
+      fg[1 + EPSI_FST + t] = epsi1 - ((psi0 - psides0) - v0/MPC::Lf * delta0 * dt);
     }
   }
 };
@@ -147,16 +134,10 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   const auto v = state[3];
   const auto cte = state[4];
   const auto epsi = state[5];
-  const auto delta = state[6];
-  const auto a = state[7];
 
-  // TODO: Set the number of model variables (includes both states and inputs).
-  // For example: If the state is a 4 element vector, the actuators is a 2
-  // element vector and there are 10 timesteps. The number of variables is:
-  //
-  // 4 * 10 + 2 * 9
+  // Set the number of model variables (includes both states and inputs).
   size_t n_vars = (6 * N) + (2 * (N-1));
-  // TODO: Set the number of constraints
+  // Set the number of constraints
   size_t n_constraints = 6 * N;
 
   // Initial value of the independent variables.
@@ -172,10 +153,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   vars[V_FST] = v;
   vars[CTE_FST] = cte;
   vars[EPSI_FST] = epsi;
-  vars[DELTA_FST] = delta;
-  vars[A_FST] = a;
 
-  // TODO: Set lower and upper limits for variables.
+  // Set lower and upper limits for variables.
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
 
@@ -187,8 +166,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 
   // the upper and lower limits for the steering (delta) are -25 to 25 degrees
   for (size_t i = DELTA_FST; i <= DELTA_LST; ++i) {
-    vars_lowerbound[i] = -0.436332;
-    vars_upperbound[i] = 0.436332;
+    vars_lowerbound[i] = -0.436332;     // radians
+    vars_upperbound[i] = 0.436332;      // radians
   }
 
   // the upper and lower limits for the acceleration are -1 and 1
@@ -219,7 +198,6 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   constraints_upperbound[V_FST] = vars[V_FST];
   constraints_upperbound[CTE_FST] = vars[CTE_FST];
   constraints_upperbound[EPSI_FST] = vars[EPSI_FST];
-
 
   // object that computes objective and constraints
   FG_eval fg_eval(coeffs);
@@ -257,7 +235,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
 
-  // TODO: Return the first actuator values. The variables can be accessed with
+  //  Return the first actuator values. The variables can be accessed with
   // `solution.x[i]`.
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
