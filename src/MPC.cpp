@@ -23,7 +23,7 @@ const double dt = 0.075;
 const double Lf = 2.67;
 
 // reference speed
-const double ref_v = 60;
+const double ref_v = 50;
 
 // ranges of variables in the arrays
 const size_t X_FST = 0;
@@ -65,21 +65,21 @@ class FG_eval {
 
     // the cost based on the reference state 
     for (auto t = 0ul; t < N; ++t) {
-      fg[0] += 10000 * CppAD::pow(vars[CTE_FST + t], 2);    
-      fg[0] += 10000 * CppAD::pow(vars[EPSI_FST + t], 2);
-      fg[0] += 10 * CppAD::pow(vars[V_FST + t] - ref_v, 2);
+      fg[0] += 2000 * CppAD::pow(vars[CTE_FST + t], 2);    
+      fg[0] += 2000 * CppAD::pow(vars[EPSI_FST + t], 2);
+      fg[0] += 5 * CppAD::pow(vars[V_FST + t] - ref_v, 2);
     }
 
     // minimize the use of actuators.
     for (auto t = 0ul; t < N - 1; t++) {
-      fg[0] += 50 * CppAD::pow(vars[DELTA_FST + t], 2);
-      fg[0] += 50 * CppAD::pow(vars[A_FST + t], 2);
+      fg[0] += 5 * CppAD::pow(vars[DELTA_FST + t], 2);
+      fg[0] += 5 * CppAD::pow(vars[A_FST + t], 2);
     }
 
     // minimize the value gap between sequential actuations.
     for (auto t = 0ul; t < N - 2; t++) {
-      fg[0] += 12500 * CppAD::pow(vars[DELTA_FST + t + 1] - vars[DELTA_FST + t], 2);
-      fg[0] += 5000 * CppAD::pow(vars[A_FST + t + 1] - vars[A_FST + t], 2);
+      fg[0] += 1250 * CppAD::pow(vars[DELTA_FST + t + 1] - vars[DELTA_FST + t], 2);
+      fg[0] += 500 * CppAD::pow(vars[A_FST + t + 1] - vars[A_FST + t], 2);
     }
 
     // setup constraints
