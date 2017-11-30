@@ -1,5 +1,13 @@
-# CarND-Controls-MPC
-Self-Driving Car Engineer Nanodegree Program
+# Model Predictive Control
+## Udacity Self-Driving Car Engineer Nanodegree Program
+
+This repository contains my implementation of a MPC controller for the Udacity Self-Driving Car Engineer Nanodegree Program. Answers to the questions in the project rubric can be found in the [write up](./docs/writeup.md).
+
+An video of the MPC-car driving a lap around the course of the udacity simulator is available on YouTube:
+[![MPC](https://img.youtube.com/vi/rjiYuwxTA4Q/0.jpg)](https://www.youtube.com/watch?v=rjiYuwxTA4Q)
+
+---
+Original README.md follows below:
 
 ---
 
