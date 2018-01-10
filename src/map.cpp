@@ -34,7 +34,7 @@ void Map::load_from_file(const char *p_filename) {
   }
 }
 
-int Map::ClosestWaypoint(double x, double y) {
+int Map::ClosestWaypoint(double x, double y) const {
 
 	double closestLen = 100000; //large number
 	int closestWaypoint = 0;
@@ -52,7 +52,7 @@ int Map::ClosestWaypoint(double x, double y) {
 	return closestWaypoint;
 }
 
-int Map::NextWaypoint(double x, double y, double theta) {
+int Map::NextWaypoint(double x, double y, double theta) const {
 
 	int closestWaypoint = ClosestWaypoint(x,y);
 
@@ -75,8 +75,7 @@ int Map::NextWaypoint(double x, double y, double theta) {
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
-vector<double> Map::getFrenet(double x, double y, double theta)
-{
+vector<double> Map::getFrenet(double x, double y, double theta) const {
 	int next_wp = NextWaypoint(x,y, theta);
 
 	int prev_wp = next_wp-1;
@@ -119,7 +118,7 @@ vector<double> Map::getFrenet(double x, double y, double theta)
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
-vector<double> Map::getXY(double s, double d) {
+vector<double> Map::getXY(double s, double d) const {
 	int prev_wp = -1;
 
 	while (s > m_waypoints_s[prev_wp+1] && (prev_wp < (int)(m_waypoints_s.size()-1) )) {
