@@ -17,12 +17,12 @@ class Map {
     void load_from_file(const char *p_filename);
 
     // waypoints
-    int ClosestWaypoint(double x, double y);
-    int NextWaypoint(double x, double y, double theta);
+    int ClosestWaypoint(double x, double y) const;
+    int NextWaypoint(double x, double y, double theta) const;
 
     // frenet
-    std::vector<double> getFrenet(double x, double y, double theta);
-    std::vector<double> getXY(double s, double d);
+    std::vector<double> getFrenet(double x, double y, double theta) const;
+    std::vector<double> getXY(double s, double d) const;
 
   public:
     // fixed dimensions of a lane
