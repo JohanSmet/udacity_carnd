@@ -8,7 +8,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "map.h"
-#include "spline.h"
+#include "planner.h"
 
 using namespace std;
 
@@ -35,43 +35,6 @@ string hasData(string s) {
   return "";
 }
 
-const int ANCHORPOINT_DELTA_S = 30;
-const int NUM_PATH_POINTS = 50;
-const double DELTA_T = 0.02;
-
-double mph_to_mps(float vel_mph) {
-	// conversion from miles/hour to meter/second
-	//	1 mile per hour = 1.60934 km per hour = 0.447039 meter per second
-	return vel_mph * 0.447039;
-}
-
-int desired_lane = 1;
-double desired_speed = mph_to_mps(49);
-
-void transform_to_car_coordinates(double ref_x, double ref_y, double ref_yaw,
-                                  const vector<double> &in_x, const vector<double> &in_y,
-                                  vector<double> &out_x, vector<double> &out_y) {
-  auto cos_yaw = cos(-ref_yaw);
-  auto sin_yaw = sin(-ref_yaw);
-
-  for (size_t idx=0; idx < in_x.size(); ++idx) {
-    auto dx = in_x[idx] - ref_x;
-    auto dy = in_y[idx] - ref_y;
-
-    out_x.push_back((dx * cos_yaw) - (dy * sin_yaw));
-    out_y.push_back((dx * sin_yaw) + (dy * cos_yaw));
-  }
-}
-
-void transform_to_map_coordinates(double ref_x, double ref_y, double ref_yaw,
-                                  double in_x, double in_y,
-                                  vector<double> &out_x, vector<double> &out_y) {
-	auto cos_yaw = cos(ref_yaw);
-	auto sin_yaw = sin(ref_yaw);
-
-	out_x.push_back((in_x * cos_yaw) - (in_y * sin_yaw) + ref_x);
-	out_y.push_back((in_x * sin_yaw) + (in_y * cos_yaw) + ref_y);
-}
 
 int main() {
   uWS::Hub h;
@@ -83,7 +46,9 @@ int main() {
 	Map map;
 	map.load_from_file(map_file_);
 
-  h.onMessage([&map](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  Planner planner(map);
+
+  h.onMessage([&map, &planner](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -119,87 +84,22 @@ int main() {
           // Sensor Fusion Data, a list of all other cars on the same side of the road.
           auto sensor_fusion = j[1]["sensor_fusion"];
 
-					// construct a list of 5 widely spaces waypoints as a rough path to follow
-					vector<double> map_anchors_x, map_anchors_y;
+          // pass sensor fusion data to the planner
+          planner.vehicles_reset();
+          for (auto sensor_data : sensor_fusion) {
+            planner.vehicles_add(Vehicle(sensor_data[0], 
+                                         sensor_data[5], sensor_data[6],
+                                         sensor_data[3], sensor_data[4]));
+          }
 
-					// use the position of the car as the reference frame for future calculations
-					auto ref_x = car_x;
-					auto ref_y = car_y;
-					auto ref_yaw = deg2rad(car_yaw);
-					auto ref_speed = mph_to_mps(car_speed);
+          // ask the planner to create a new trajectory (starting from the remainder of the previous one)
+          vector<vector<double>> trajectory = {previous_path_x, previous_path_y};
+          planner.create_trajectory(Vehicle(car_s, car_d, car_speed), trajectory);
 
-					if (previous_path_x.size() < 2) {
-						// not enough left of the previous path, start at the position of the car (at the angle of the car)
-						map_anchors_x.push_back(ref_x - cos(ref_yaw));
-						map_anchors_y.push_back(ref_y - sin(ref_yaw));
-
-						map_anchors_x.push_back(ref_x);
-						map_anchors_y.push_back(ref_y);
-					} else {
-						// start at the end of the previously computed path for smoothness
-						int lst = previous_path_x.size() - 1;
-						ref_x = previous_path_x[lst];
-						ref_y = previous_path_y[lst];
-						double prev_x = previous_path_x[lst- 1];
-						double prev_y = previous_path_y[lst- 1];
-
-						ref_yaw = atan2(ref_y - prev_y, ref_x - prev_x);
-						ref_speed = distance(prev_x, prev_y, ref_x, ref_y) / DELTA_T;
-
-						map_anchors_x.push_back(prev_x);
-						map_anchors_y.push_back(prev_y);
-
-						map_anchors_x.push_back(previous_path_x[lst]);
-						map_anchors_y.push_back(previous_path_y[lst]);
-					}
-
-					// add three more anchorpoints at even intervals (beyond the end of the last path)
-					double d = Map::LANE_HALF_WIDTH + (desired_lane * Map::LANE_WIDTH);
-
-					for (int idx = 0; idx < 3; ++idx) {
-						auto anchor = map.getXY(car_s + ((idx+1) * ANCHORPOINT_DELTA_S), d);
-						map_anchors_x.push_back(anchor[0]);
-						map_anchors_y.push_back(anchor[1]);
-					}
-
-					// transform anchorpoints to the reference coordinate space
-					vector<double> car_anchors_x, car_anchors_y;
-					transform_to_car_coordinates(ref_x, ref_y, ref_yaw, map_anchors_x, map_anchors_y, car_anchors_x, car_anchors_y);
-
-					// fit a spline to the anchorpoints
-					tk::spline	path;
-					path.set_points(car_anchors_x, car_anchors_y);
-
-					// add the previous path points to the output path
-					vector<double> next_x_vals = previous_path_x;
-					vector<double> next_y_vals = previous_path_y;
-
-					// fill out path
-					double target_x = 30;
-					double target_y = path(target_x);
-					double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
-					double new_x = 0, new_y = 0;
-
-					for (int idx=1; idx < NUM_PATH_POINTS - previous_path_x.size(); ++idx) {
-							
-						// speed control
-						if (ref_speed < desired_speed) {
-							ref_speed += 3 * DELTA_T;
-						}
-
-						double N = target_dist / (DELTA_T * ref_speed);
-						new_x = new_x + (target_x / N);
-						new_y = path(new_x);
-
-						// transform to map coordinates and add to output
-						transform_to_map_coordinates(ref_x, ref_y, ref_yaw, new_x, new_y, next_x_vals, next_y_vals);
-					}
-
+          // send update to simulator
 					json msgJson;
-
-					// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-					msgJson["next_x"] = next_x_vals;
-					msgJson["next_y"] = next_y_vals;
+					msgJson["next_x"] = trajectory[0];
+					msgJson["next_y"] = trajectory[1];
 
 					auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
