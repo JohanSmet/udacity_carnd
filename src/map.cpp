@@ -143,3 +143,11 @@ vector<double> Map::getXY(double s, double d) const {
 
 	return {x,y};
 }
+
+int Map::lane_from_d(double d) const {
+  return static_cast<int>(d / LANE_WIDTH);
+}
+
+double Map::lane_center(int lane) const {
+	return LANE_HALF_WIDTH + (lane * LANE_WIDTH);
+}
