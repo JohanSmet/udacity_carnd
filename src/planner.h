@@ -40,10 +40,13 @@ class Planner {
 
   // helper functions
   private:
-    void reset_simulation(Vehicle ego, int prev_trajectory_len);
+    void reset_simulation(int prev_trajectory_len);
     void predict_vehicles(double delta_t);
 
+    bool try_changing_lane(int prev_trajectory_len);
+
     void generate_keep_lane_targets();
+    void generate_change_lane_targets(int desired_lane);
     bool generate_trajectory(double delta_t);
 
     double distance_in_lane(double ego_s, double veh_s);
@@ -54,10 +57,12 @@ class Planner {
   private:
     const Map &m_map;
     std::vector<Vehicle>  m_lane_vehicles[Map::NUM_LANES];
+    std::vector<Vehicle>  m_lane_vehicles_org[Map::NUM_LANES];
 
     Vehicle m_last_ego;
 
     std::vector<FrenetPoint>  m_targets;
+    FrenetPoint               m_last_target;
     int m_current_lane;
     int m_desired_lane;
     double m_desired_speed;
