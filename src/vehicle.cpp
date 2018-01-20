@@ -2,6 +2,13 @@
 
 #include <cmath>
 
+Vehicle::Vehicle() :
+    m_id(0),
+    m_s(0),
+    m_d(0) ,
+    m_speed(0) {
+}
+
 Vehicle::Vehicle(int id, double s, double d, double x_vel, double y_vel) :
     m_id(id),
     m_s(s),
