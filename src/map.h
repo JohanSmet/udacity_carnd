@@ -10,18 +10,21 @@ inline double distance(double x1, double y1, double x2, double y2)
   return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 }
 
+struct MapPrivate;
+
 class Map {
   public:
     // construction 
     Map();
+    ~Map();
     void load_from_file(const char *p_filename);
 
     // waypoints
-    int ClosestWaypoint(double x, double y) const;
-    int NextWaypoint(double x, double y, double theta) const;
+    // int ClosestWaypoint(double x, double y) const;
+    // int NextWaypoint(double x, double y, double theta) const;
 
     // frenet
-    std::vector<double> getFrenet(double x, double y, double theta) const;
+    // std::vector<double> getFrenet(double x, double y, double theta) const;
     std::vector<double> getXY(double s, double d) const;
 
     // lanes
@@ -40,11 +43,7 @@ class Map {
     constexpr static double max_s = 6945.554;
 
   private:
-    std::vector<double> m_waypoints_x;
-    std::vector<double> m_waypoints_y;
-    std::vector<double> m_waypoints_s;
-    std::vector<double> m_waypoints_dx;
-    std::vector<double> m_waypoints_dy;
+    MapPrivate *m_prv;
 
 };
 
