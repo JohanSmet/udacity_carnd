@@ -6,6 +6,7 @@ class Vehicle {
   // interface functions
   public:
     // construction
+    Vehicle();
     Vehicle(int id, double s, double d, double x_vel, double y_vel);
     Vehicle(double s, double d, double speed);
 
