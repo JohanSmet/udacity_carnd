@@ -38,6 +38,7 @@ Planner::Planner(const Map &map) : m_map(map) {
 void Planner::vehicles_reset() {
   for (int lane=0; lane < Map::NUM_LANES; ++lane) {
     m_lane_vehicles[lane].clear();
+   m_lane_vehicles_org[lane].clear();
   }
 }
 
@@ -46,6 +47,7 @@ void Planner::vehicles_add(Vehicle vehicle) {
 
   if (lane >= 0 && lane < Map::NUM_LANES) {
     m_lane_vehicles[lane].push_back(vehicle);
+    m_lane_vehicles_org[lane].push_back(vehicle);
   }
 }
 
@@ -61,16 +63,27 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   if (trajectory[0].size() >= TRAJECTORY_POINTS)
     return;
 
-  // reset simulation to the end of the previous trajectory
-  reset_simulation(ego, trajectory[0].size());
-  
+  // reset ego state if trajectory is empty
+  if (trajectory[0].empty()) {
+    m_last_ego = ego;
+    m_last_target = {ego.s() - 1, ego.d()};
+  }
+
   // generate new target points if necessary
-  if (m_targets.size() < 2) {
+  bool trajectory_ok = m_targets.size() >= 2;
+
+  if (!trajectory_ok && 
+      m_last_ego.speed() < mph_to_mps(40) && m_last_ego.speed() > mph_to_mps(30)) {
+      trajectory_ok = try_changing_lane(trajectory[0].empty());
+  }
+
+  if (!trajectory_ok) {
+    // reset simulation to the end of the previous trajectory
     generate_keep_lane_targets();
   }
 
-  // generate new trajectory, look ahead far enough to avoid bad trajectories
-  generate_trajectory(2.0);
+  reset_simulation(trajectory[0].size());
+  generate_trajectory(1.0);
 
   // copy the needed part of the trajectory to the output
   int np = TRAJECTORY_POINTS - trajectory[0].size();
@@ -94,19 +107,26 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   for (auto target : m_old_targets) {
     if (target.m_s > m_last_ego.s()) {
       m_targets.push_back(target);
+    } else {
+      m_last_target = target;
     }
   }
+
+  std::cout << "Ego-s = " << m_last_ego.s()
+            << " target[0].s = " << m_targets[0].m_s
+            << " target[1].s = " << m_targets[1].m_s
+            << std::endl;
 }
 
-void Planner::reset_simulation(Vehicle ego, int prev_trajectory_len) {
+void Planner::reset_simulation(int prev_trajectory_len) {
+
+  // restore original sensor fusion data
+  for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
+    m_lane_vehicles[lane] = m_lane_vehicles_org[lane];
+  }
 
   // simulate the movement of the detected vehicles up to the end of the current trajectory
   predict_vehicles(prev_trajectory_len * TIMESTEP);
-
-  // reset ego state if trajectory is empty
-  if (prev_trajectory_len == 0) {
-    m_last_ego = ego;
-  }
 
   m_frenet_path.clear();
   m_speeds.clear();
@@ -119,18 +139,48 @@ void Planner::predict_vehicles(double delta_t) {
       veh.predict(delta_t);
     }
   }
+}
 
+bool Planner::try_changing_lane(int prev_trajectory_len) {
+
+  // build a list of potential lanes
+  std::vector<int> potential_lanes = {1};
+  if (m_current_lane == 1) {
+    potential_lanes = {0, 2};
+  }
+
+  // try each potential lane
+  for (int desired_lane : potential_lanes) {
+    reset_simulation(prev_trajectory_len);
+    generate_change_lane_targets(desired_lane);
+
+    if (generate_trajectory(2.0)) {
+      m_current_lane = desired_lane;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void Planner::generate_keep_lane_targets() {
 
   if (m_targets.size() < 1) {
-    m_targets.push_back({m_last_ego.s() + 15, m_last_ego.d()});
+    m_targets.push_back({m_last_ego.s() + 15, m_map.lane_center(m_current_lane)});
   }
 
   if (m_targets.size() < 2) {
     m_targets.push_back({m_targets[0].m_s + 15, m_targets[0].m_d});
   }
+}
+
+void Planner::generate_change_lane_targets(int desired_lane) {
+
+  m_targets.clear();
+
+  auto target_d = m_map.lane_center(desired_lane);
+  m_targets.push_back({m_last_ego.s() + 15, (target_d + m_last_ego.d()) / 2.0});
+  m_targets.push_back({m_last_ego.s() + 30, target_d});
 }
 
 bool Planner::generate_trajectory(double delta_t) {
@@ -139,20 +189,21 @@ bool Planner::generate_trajectory(double delta_t) {
 
   // create a list of control points for the spline
   std::vector<double> control_s = {
+    m_last_target.m_s,
     sim_ego.s(),
     m_targets[0].m_s,
     m_targets[1].m_s,
     m_targets[1].m_s + 30,
-    m_targets[1].m_s + 60,
   };
 
   std::vector<double> control_d = {
+    m_last_target.m_d,
     sim_ego.d(),
     m_targets[0].m_d,
     m_targets[1].m_d,
     m_targets[1].m_d,
-    m_targets[1].m_d
   };
+
 
   // fit a spline to the control points
   tk::spline  path;
@@ -185,10 +236,6 @@ bool Planner::generate_trajectory(double delta_t) {
         m_desired_speed = SPEED_LIMIT * 0.95;
       }
 
-      std::cout << "nearest up front = " << nearest_front
-                << " desired speed = " << m_desired_speed
-                << std::endl;
-
       // update speed
       if (cur_speed <= m_desired_speed) {
         cur_speed += ACCELERATION * TIMESTEP;
@@ -196,20 +243,16 @@ bool Planner::generate_trajectory(double delta_t) {
         cur_speed -= ACCELERATION * TIMESTEP;
       }
 
-      std::cout << " speed = " << cur_speed << std::endl;
-
       // calculate position after this timestep
       double n = target_dist / (TIMESTEP * cur_speed);
 			new_s = new_s + (30 / n);
-			new_d = path(new_d);
+			new_d = path(new_s);
 
       // XXX check for collisions
 
       // store path
       m_frenet_path.push_back({new_s, new_d});
       m_speeds.push_back(cur_speed);
-
-
   }
 
   return true;
