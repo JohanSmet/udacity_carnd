@@ -4,15 +4,33 @@
 #include <iostream>
 #include <sstream>
 
+#include "spline.h"
+
 using namespace std;
 
-Map::Map() {
+struct MapPrivate {
+	tk::spline	m_waypoints_spline_x;
+	tk::spline	m_waypoints_spline_y;
+	tk::spline	m_waypoints_spline_dx;
+	tk::spline	m_waypoints_spline_dy;
+};
 
+Map::Map() : m_prv(new MapPrivate()) {
+}
+
+Map::~Map() {
+	delete m_prv;
 }
 
 void Map::load_from_file(const char *p_filename) {
   ifstream in_map_(p_filename, ifstream::in);
   string line;
+
+  std::vector<double> waypoints_x;
+  std::vector<double> waypoints_y;
+  std::vector<double> waypoints_s;
+  std::vector<double> waypoints_dx;
+  std::vector<double> waypoints_dy;
 
   while (getline(in_map_, line)) {
   	istringstream iss(line);
@@ -26,14 +44,21 @@ void Map::load_from_file(const char *p_filename) {
   	iss >> s;
   	iss >> d_x;
   	iss >> d_y;
-  	m_waypoints_x.push_back(x);
-  	m_waypoints_y.push_back(y);
-  	m_waypoints_s.push_back(s);
-  	m_waypoints_dx.push_back(d_x);
-  	m_waypoints_dy.push_back(d_y);
+  	waypoints_x.push_back(x);
+  	waypoints_y.push_back(y);
+  	waypoints_s.push_back(s);
+  	waypoints_dx.push_back(d_x);
+  	waypoints_dy.push_back(d_y);
   }
+
+	m_prv->m_waypoints_spline_x.set_points(waypoints_s, waypoints_x);
+	m_prv->m_waypoints_spline_y.set_points(waypoints_s, waypoints_y);
+	m_prv->m_waypoints_spline_dx.set_points(waypoints_s, waypoints_dx);
+	m_prv->m_waypoints_spline_dy.set_points(waypoints_s, waypoints_dy);
 }
 
+
+/*
 int Map::ClosestWaypoint(double x, double y) const {
 
 	double closestLen = 100000; //large number
@@ -115,10 +140,16 @@ vector<double> Map::getFrenet(double x, double y, double theta) const {
 	frenet_s += distance(0,0,proj_x,proj_y);
 
 	return {frenet_s,frenet_d};
-}
+}*/
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
 vector<double> Map::getXY(double s, double d) const {
+
+	double x = m_prv->m_waypoints_spline_x(s) + (d * m_prv->m_waypoints_spline_dx(s));
+	double y = m_prv->m_waypoints_spline_y(s) + (d * m_prv->m_waypoints_spline_dy(s));
+	return {x, y};
+
+	/*
 	int prev_wp = -1;
 
 	while (s > m_waypoints_s[prev_wp+1] && (prev_wp < (int)(m_waypoints_s.size()-1) )) {
@@ -141,7 +172,7 @@ vector<double> Map::getXY(double s, double d) const {
 	double x = seg_x + d*cos(perp_heading);
 	double y = seg_y + d*sin(perp_heading);
 
-	return {x,y};
+	return {x,y}; */
 }
 
 int Map::lane_from_d(double d) const {
