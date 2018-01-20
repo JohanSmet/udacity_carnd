@@ -41,8 +41,14 @@ class Planner {
   // helper functions
   private:
     void reset_simulation(Vehicle ego, int prev_trajectory_len);
+    void predict_vehicles(double delta_t);
+
     void generate_keep_lane_targets();
     bool generate_trajectory(double delta_t);
+
+    double distance_in_lane(double ego_s, double veh_s);
+    double check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest);
+
 
   // member variables
   private:

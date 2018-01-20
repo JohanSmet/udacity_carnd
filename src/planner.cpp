@@ -30,6 +30,7 @@ void transform_car_to_map(const Vehicle &car,
 } // unnamed namespace
 
 Planner::Planner(const Map &map) : m_map(map) {
+  m_current_lane = 1;
   m_desired_lane = 1;
   m_desired_speed = SPEED_LIMIT * 0.9;
 }
@@ -98,12 +99,9 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
 }
 
 void Planner::reset_simulation(Vehicle ego, int prev_trajectory_len) {
+
   // simulate the movement of the detected vehicles up to the end of the current trajectory
-  for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
-    for (auto &veh : m_lane_vehicles[lane]) {
-      veh.predict(prev_trajectory_len * TIMESTEP);
-    }
-  }
+  predict_vehicles(prev_trajectory_len * TIMESTEP);
 
   // reset ego state if trajectory is empty
   if (prev_trajectory_len == 0) {
@@ -112,6 +110,16 @@ void Planner::reset_simulation(Vehicle ego, int prev_trajectory_len) {
 
   m_frenet_path.clear();
   m_speeds.clear();
+}
+
+void Planner::predict_vehicles(double delta_t) {
+
+  for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
+    for (auto &veh : m_lane_vehicles[lane]) {
+      veh.predict(delta_t);
+    }
+  }
+
 }
 
 void Planner::generate_keep_lane_targets() {
@@ -161,12 +169,34 @@ bool Planner::generate_trajectory(double delta_t) {
 
   for (double t=0.0; t < delta_t; t += TIMESTEP) {
 
-      // update velocity
+      // update predictions for the detected vehicles
+      predict_vehicles(TIMESTEP);
+
+      // adjust desired speed depending on the traffic in front
+      Vehicle nearest_veh;
+
+      double nearest_front = check_nearest_vehicle_up_front(new_s, m_current_lane, nearest_veh);
+
+      if (nearest_front < 10) {
+        m_desired_speed = nearest_veh.speed() * 0.75;
+      } else if (nearest_front < 16) {
+        m_desired_speed = nearest_veh.speed();
+      } else {
+        m_desired_speed = SPEED_LIMIT * 0.95;
+      }
+
+      std::cout << "nearest up front = " << nearest_front
+                << " desired speed = " << m_desired_speed
+                << std::endl;
+
+      // update speed
       if (cur_speed <= m_desired_speed) {
         cur_speed += ACCELERATION * TIMESTEP;
       } else if (cur_speed >= m_desired_speed) {
         cur_speed -= ACCELERATION * TIMESTEP;
       }
+
+      std::cout << " speed = " << cur_speed << std::endl;
 
       // calculate position after this timestep
       double n = target_dist / (TIMESTEP * cur_speed);
@@ -186,4 +216,22 @@ bool Planner::generate_trajectory(double delta_t) {
 
 }
 
+double Planner::distance_in_lane(double ego_s, double veh_s) {
+  return veh_s - ego_s;
+}
+
+double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest) {
+
+  double min_dist = Map::max_s;
+
+  for (const auto &veh : m_lane_vehicles[lane]) {
+    double dist = distance_in_lane(ego_s, veh.s());
+    if (dist > 0 && dist < min_dist) {
+      min_dist = dist;
+      nearest = veh;
+    }
+  }
+
+  return min_dist;
+}
 
