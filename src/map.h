@@ -24,10 +24,17 @@ class Map {
     std::vector<double> getFrenet(double x, double y, double theta) const;
     std::vector<double> getXY(double s, double d) const;
 
+    // lanes
+    int lane_from_d(double d) const;
+    double lane_center(int lane) const;
+
   public:
     // fixed dimensions of a lane
     const static int LANE_HALF_WIDTH = 2;
     const static int LANE_WIDTH = LANE_HALF_WIDTH * 2;
+
+    // lanes
+    const static int NUM_LANES = 3;
 
     // The max s value before wrapping around the track back to 0
     constexpr static double max_s = 6945.554;
