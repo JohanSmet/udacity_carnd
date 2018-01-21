@@ -121,7 +121,7 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   }
 
   reset_simulation();
-  generate_trajectory(1.0);
+  generate_trajectory(1.0, false);
 
   // copy the needed part of the trajectory to the output
   int np = TRAJECTORY_POINTS - trajectory[0].size();
@@ -231,7 +231,7 @@ bool Planner::try_changing_lane() {
     reset_simulation();
     generate_change_lane_targets(lane);
 
-    if (generate_trajectory(5.0)) {
+    if (generate_trajectory(5.0, true)) {
       m_desired_lane = lane;
       return true;
     }
@@ -260,7 +260,7 @@ void Planner::generate_change_lane_targets(int desired_lane) {
   m_targets.push_back({m_last_ego.s() + 30, target_d});
 }
 
-bool Planner::generate_trajectory(double delta_t) {
+bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 
   Vehicle sim_ego = m_last_ego;
 
@@ -331,7 +331,7 @@ bool Planner::generate_trajectory(double delta_t) {
 			double new_d = path(car_s);
 
       // check for collisions
-      if (collision_with_vehicle(map_s, new_d)) {
+      if (check_collision && collision_with_vehicle(map_s, new_d)) {
         return false;
       }
 
@@ -365,7 +365,7 @@ double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &
 
 bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
   const double D_RADIUS = 1.5;
-  const double S_RADIUS = 4;
+  const double S_RADIUS = 8;
 
   for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
     for (auto &veh : m_lane_vehicles[lane]) {
