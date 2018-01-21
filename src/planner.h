@@ -37,13 +37,17 @@ class Planner {
     const double TIMESTEP = 0.02;
     const double SPEED_LIMIT = mph_to_mps(50);
     const double ACCELERATION = 5;      // m/s² 
+    const double STARTUP_TIME = 5;      // s
+    const double CHANGE_LANE_COOLDOWN = 7.5;
 
   // helper functions
   private:
-    void reset_simulation(int prev_trajectory_len);
+    void reset_simulation();
     void predict_vehicles(double delta_t);
 
-    bool try_changing_lane(int prev_trajectory_len);
+    void process_state();
+    void change_state(int p_new_state);
+    bool try_changing_lane();
 
     void generate_keep_lane_targets();
     void generate_change_lane_targets(int desired_lane);
@@ -62,9 +66,13 @@ class Planner {
     std::vector<Vehicle>  m_lane_vehicles_org[Map::NUM_LANES];
 
     Vehicle m_last_ego;
+    double  m_last_delta;
 
     std::vector<FrenetPoint>  m_targets;
     FrenetPoint               m_last_target;
+
+    int m_state;
+    double m_state_time;
     int m_current_lane;
     int m_desired_lane;
     double m_desired_speed;
