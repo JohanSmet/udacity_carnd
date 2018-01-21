@@ -229,6 +229,14 @@ bool Planner::try_changing_lane() {
   // try each potential lane
   for (int lane : potential_lanes) {
     reset_simulation();
+
+    // don't bother if there is a vehicle close in that lane 
+    Vehicle veh;
+    if (check_nearest_vehicle_up_front(m_last_ego.s(), lane, veh) < 15) {
+      continue;
+    }
+
+    // generate path and check validity
     generate_change_lane_targets(lane);
 
     if (generate_trajectory(5.0, true)) {
@@ -307,7 +315,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
       // adjust desired speed depending on the traffic in front
       Vehicle nearest_veh;
 
-      double nearest_front = check_nearest_vehicle_up_front(map_s, m_current_lane, nearest_veh);
+      double nearest_front = check_nearest_vehicle_up_front(map_s, nearest_veh);
 
       if (nearest_front < 10) {
         m_desired_speed = nearest_veh.speed() * 0.75;
@@ -348,6 +356,18 @@ double Planner::distance_in_lane(double ego_s, double veh_s) {
   return veh_s - ego_s;
 }
 
+double Planner::check_nearest_vehicle_up_front(double ego_s, Vehicle &nearest) {
+
+  double current = check_nearest_vehicle_up_front(ego_s, m_current_lane, nearest);
+
+  if (m_desired_lane != m_current_lane) {
+    double desired = check_nearest_vehicle_up_front(ego_s, m_desired_lane, nearest);
+    return (std::min(current, desired));
+  }
+
+  return current;
+}
+
 double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest) {
 
   double min_dist = Map::max_s;
@@ -364,8 +384,8 @@ double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &
 }
 
 bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
-  const double D_RADIUS = 1.5;
-  const double S_RADIUS = 8;
+  const double D_RADIUS = 3.9;
+  const double S_RADIUS = 10;
 
   for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
     for (auto &veh : m_lane_vehicles[lane]) {
@@ -375,4 +395,6 @@ bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
       }
     }
   }
+
+  return false;
 }

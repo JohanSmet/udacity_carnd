@@ -54,6 +54,7 @@ class Planner {
     bool generate_trajectory(double delta_t, bool check_collision);
 
     double distance_in_lane(double ego_s, double veh_s);
+    double check_nearest_vehicle_up_front(double ego_s, Vehicle &nearest);
     double check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest);
 
     bool collision_with_vehicle(double ego_s, double ego_d);
