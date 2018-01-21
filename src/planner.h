@@ -51,7 +51,7 @@ class Planner {
 
     void generate_keep_lane_targets();
     void generate_change_lane_targets(int desired_lane);
-    bool generate_trajectory(double delta_t);
+    bool generate_trajectory(double delta_t, bool check_collision);
 
     double distance_in_lane(double ego_s, double veh_s);
     double check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest);
