@@ -248,7 +248,10 @@ bool Planner::generate_trajectory(double delta_t) {
 			new_s = new_s + (30 / n);
 			new_d = path(new_s);
 
-      // XXX check for collisions
+      // check for collisions
+      if (collision_with_vehicle(new_s, new_d)) {
+        return false;
+      }
 
       // store path
       m_frenet_path.push_back({new_s, new_d});
@@ -278,3 +281,16 @@ double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &
   return min_dist;
 }
 
+bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
+  const double D_RADIUS = 1.5;
+  const double S_RADIUS = 3;
+
+  for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
+    for (auto &veh : m_lane_vehicles[lane]) {
+      if (fabs(distance_in_lane(ego_s, veh.s())) < S_RADIUS &&
+          fabs(ego_d - veh.d()) < D_RADIUS) {
+        return true;
+      }
+    }
+  }
+}
