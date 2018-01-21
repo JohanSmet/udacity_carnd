@@ -24,7 +24,7 @@ Map::~Map() {
 
 void Map::load_from_file(const char *p_filename) {
   ifstream in_map_(p_filename, ifstream::in);
-  string line;
+	string line;
 
   std::vector<double> waypoints_x;
   std::vector<double> waypoints_y;
@@ -49,8 +49,16 @@ void Map::load_from_file(const char *p_filename) {
   	waypoints_s.push_back(s);
   	waypoints_dx.push_back(d_x);
   	waypoints_dy.push_back(d_y);
-  }
+	}
+	
+	// make sure to close the splines
+	waypoints_x.push_back(waypoints_x[0]);
+	waypoints_y.push_back(waypoints_y[0]);
+	waypoints_s.push_back(Map::max_s * 1);
+	waypoints_dx.push_back(waypoints_dx[0]);
+	waypoints_dy.push_back(waypoints_dy[0]);
 
+	// create the splines
 	m_prv->m_waypoints_spline_x.set_points(waypoints_s, waypoints_x);
 	m_prv->m_waypoints_spline_y.set_points(waypoints_s, waypoints_y);
 	m_prv->m_waypoints_spline_dx.set_points(waypoints_s, waypoints_dx);
@@ -145,8 +153,10 @@ vector<double> Map::getFrenet(double x, double y, double theta) const {
 // Transform from Frenet s,d coordinates to Cartesian x,y
 vector<double> Map::getXY(double s, double d) const {
 
-	double x = m_prv->m_waypoints_spline_x(s) + (d * m_prv->m_waypoints_spline_dx(s));
-	double y = m_prv->m_waypoints_spline_y(s) + (d * m_prv->m_waypoints_spline_dy(s));
+	double clamped_s = fmod(s, Map::max_s);
+
+	double x = m_prv->m_waypoints_spline_x(clamped_s) + (d * m_prv->m_waypoints_spline_dx(clamped_s));
+	double y = m_prv->m_waypoints_spline_y(clamped_s) + (d * m_prv->m_waypoints_spline_dy(clamped_s));
 	return {x, y};
 
 	/*

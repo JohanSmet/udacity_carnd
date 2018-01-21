@@ -15,6 +15,22 @@ const char *STATE_NAMES[] = {
   "changing_lane"
 };
 
+double transform_s_map_to_car(const Vehicle &car, double map_s) {
+  double car_s = map_s - car.s();
+
+  if (car_s > (Map::max_s / 2.0))
+    car_s -= Map::max_s;
+  else if (car_s < -(Map::max_s / 2.0))
+    car_s += Map::max_s;
+
+  return car_s;
+}
+
+double transform_s_car_to_map(const Vehicle &car, double car_s) {
+  double map_s = fmod(car_s + car.s(), Map::max_s);
+  return map_s;
+}
+
 /*void transform_map_to_car(const Vehicle &car,
                           double map_x, double map_y,
                           double &car_x, double &car_y) {
@@ -78,7 +94,7 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   // reset ego state if trajectory is empty
   if (trajectory[0].empty()) {
     m_last_ego = ego;
-    m_last_target = {ego.s() - 1, ego.d()};
+    m_last_target = {m_last_ego.s() - 1, m_last_ego.d()};
   }
   
   m_last_delta = trajectory[0].size() * TIMESTEP;
@@ -129,7 +145,7 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   m_targets.clear();
 
   for (auto target : m_old_targets) {
-    if (target.m_s > m_last_ego.s()) {
+    if (transform_s_map_to_car(m_last_ego, target.m_s) > 0) {
       m_targets.push_back(target);
     } else {
       m_last_target = target;
@@ -215,7 +231,7 @@ bool Planner::try_changing_lane() {
     reset_simulation();
     generate_change_lane_targets(lane);
 
-    if (generate_trajectory(2.0)) {
+    if (generate_trajectory(5.0)) {
       m_desired_lane = lane;
       return true;
     }
@@ -265,17 +281,21 @@ bool Planner::generate_trajectory(double delta_t) {
     m_targets[1].m_d,
   };
 
+  // transfrom the control points to be relative to the car (to avoid wrapping problems)
+  for (auto &c : control_s) {
+    c = transform_s_map_to_car(m_last_ego, c);
+  }
 
   // fit a spline to the control points
   tk::spline  path;
   path.set_points(control_s, control_d);
 
   // generate the new path from the spline
-  double target_s = sim_ego.s() + 30;
+  double target_s = 30;
 	double target_d = path(target_s);
-	double target_dist = distance(sim_ego.s(), sim_ego.d(), target_s, target_d);
-	double new_s = sim_ego.s(); 
-  double new_d = sim_ego.d();
+	double target_dist = sqrt((target_s * target_s) + (target_d * target_d));
+	double car_s = 0.0;
+  double map_s = m_last_ego.s();
 
   double cur_speed = sim_ego.speed();
 
@@ -287,7 +307,7 @@ bool Planner::generate_trajectory(double delta_t) {
       // adjust desired speed depending on the traffic in front
       Vehicle nearest_veh;
 
-      double nearest_front = check_nearest_vehicle_up_front(new_s, m_current_lane, nearest_veh);
+      double nearest_front = check_nearest_vehicle_up_front(map_s, m_current_lane, nearest_veh);
 
       if (nearest_front < 10) {
         m_desired_speed = nearest_veh.speed() * 0.75;
@@ -306,16 +326,17 @@ bool Planner::generate_trajectory(double delta_t) {
 
       // calculate position after this timestep
       double n = target_dist / (TIMESTEP * cur_speed);
-			new_s = new_s + (30 / n);
-			new_d = path(new_s);
+			car_s = car_s + (target_s / n);
+      map_s = transform_s_car_to_map(m_last_ego, car_s);
+			double new_d = path(car_s);
 
       // check for collisions
-      if (collision_with_vehicle(new_s, new_d)) {
+      if (collision_with_vehicle(map_s, new_d)) {
         return false;
       }
 
       // store path
-      m_frenet_path.push_back({new_s, new_d});
+      m_frenet_path.push_back({map_s, new_d});
       m_speeds.push_back(cur_speed);
   }
 
@@ -344,7 +365,7 @@ double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &
 
 bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
   const double D_RADIUS = 1.5;
-  const double S_RADIUS = 3;
+  const double S_RADIUS = 4;
 
   for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
     for (auto &veh : m_lane_vehicles[lane]) {
