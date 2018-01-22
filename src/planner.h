@@ -38,7 +38,7 @@ class Planner {
     const double SPEED_LIMIT = mph_to_mps(50);
     const double ACCELERATION = 5;      // m/s² 
     const double STARTUP_TIME = 5;      // s
-    const double CHANGE_LANE_COOLDOWN = 7.5;
+    const double CHANGE_LANE_COOLDOWN = 5;
 
   // helper functions
   private:

@@ -383,7 +383,7 @@ double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &
 
 bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
   const double D_RADIUS = 3.9;
-  const double S_RADIUS = 10;
+  const double S_RADIUS = 8;
 
   for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
     for (auto &veh : m_lane_vehicles[lane]) {
