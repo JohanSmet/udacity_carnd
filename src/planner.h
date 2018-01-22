@@ -42,7 +42,6 @@ class Planner {
 
   // helper functions
   private:
-    void reset_simulation();
     void predict_vehicles(double delta_t);
 
     void process_state();
@@ -58,19 +57,15 @@ class Planner {
     double check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest);
 
     bool collision_with_vehicle(double ego_s, double ego_d);
-
-
+  
   // member variables
   private:
     const Map &m_map;
-    std::vector<Vehicle>  m_lane_vehicles[Map::NUM_LANES];
-    std::vector<Vehicle>  m_lane_vehicles_org[Map::NUM_LANES];
 
-    Vehicle m_last_ego;
-    double  m_last_delta;
-
+    std::vector<std::vector<Vehicle>>   m_lane_vehicles;
     std::vector<FrenetPoint>  m_targets;
     FrenetPoint               m_last_target;
+    Vehicle                   m_last_ego;
 
     int m_state;
     double m_state_time;
