@@ -2,6 +2,7 @@
 #include "spline.h"
 
 #include <iostream>
+#include <algorithm>
 
 namespace {
 
@@ -169,8 +170,10 @@ void Planner::process_state() {
       break;
     
     case STATE_KEEP_LANE :
-      if (m_state_time >= CHANGE_LANE_COOLDOWN && m_last_ego.speed() < mph_to_mps(42)) {
-        if (try_changing_lane()) {
+      if (m_state_time >= CHANGE_LANE_COOLDOWN) {
+        int ideal_lane = check_for_ideal_lane();
+
+        if (ideal_lane != m_current_lane && try_changing_lane(ideal_lane)) {
           change_state(STATE_CHANGING_LANE);
         }
       }
@@ -200,48 +203,37 @@ void Planner::change_state(int p_new_state) {
 
 }
 
-bool Planner::try_changing_lane() {
+bool Planner::try_changing_lane(int lane) {
+
+  // only try to change to adjactent lanes
+  int target_lane = (lane > m_current_lane) ? m_current_lane + 1 : m_current_lane - 1;
 
   // save some state
   auto f_saved_vehicles = m_lane_vehicles;
-  auto f_saved_targets = m_targets;
+  auto f_saved_targets  = m_targets;
+  auto f_saved_speed    = m_desired_speed;
 
   bool sw_ok = false;
+  m_desired_speed = std::min(mph_to_mps(40.0), m_desired_speed);
 
-  // build a list of potential lanes
-  std::vector<int> potential_lanes = {1};
-  if (m_current_lane == 1) {
-    potential_lanes = {0, 2};
+  // generate path and check validity
+  generate_change_lane_targets(target_lane);
+
+  if (generate_trajectory(5.0, true)) {
+    m_desired_lane = target_lane;
+    sw_ok = true;
   }
 
-  // try each potential lane
-  for (int lane : potential_lanes) {
+  // always restore vehicle state
+  m_lane_vehicles = f_saved_vehicles;
 
-    // don't bother if there is a vehicle close in that lane 
-    Vehicle veh;
-    if (check_nearest_vehicle_up_front(m_last_ego.s(), lane, veh) < 15) {
-      continue;
-    }
-
-    // generate path and check validity
-    generate_change_lane_targets(lane);
-
-    if (generate_trajectory(5.0, true)) {
-      m_desired_lane = lane;
-      sw_ok = true;
-    }
-
-    // always restore vehicle state
-    m_lane_vehicles = f_saved_vehicles;
-
-    // stop if a good trajectory was generated
-    if (sw_ok) {
-      return true;
-    }
+  // restore targets if there was no valid trajectory
+  if (!sw_ok) {
+    m_targets = f_saved_targets;
+    m_desired_speed = f_saved_speed;
   }
 
-  m_targets = f_saved_targets;
-  return false;
+  return sw_ok;
 }
 
 void Planner::generate_keep_lane_targets() {
@@ -259,9 +251,11 @@ void Planner::generate_change_lane_targets(int desired_lane) {
 
   m_targets.clear();
 
+  double delta = (m_last_ego.speed() > mph_to_mps(40)) ? 20 : 15;
+
   auto target_d = m_map.lane_center(desired_lane);
-  m_targets.push_back({m_last_ego.s() + 15, (target_d + m_last_ego.d()) / 2.0});
-  m_targets.push_back({m_last_ego.s() + 30, target_d});
+  m_targets.push_back({m_last_ego.s() + delta, (target_d + m_last_ego.d()) / 2.0});
+  m_targets.push_back({m_last_ego.s() + (delta * 2), target_d});
 }
 
 bool Planner::generate_trajectory(double delta_t, bool check_collision) {
@@ -313,7 +307,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
       // adjust desired speed depending on the traffic in front
       Vehicle nearest_veh;
 
-      double nearest_front = check_nearest_vehicle_up_front(map_s, nearest_veh);
+      double nearest_front = check_nearest_vehicle_up_front(map_s, m_desired_lane, nearest_veh);
 
       if (nearest_front < 10) {
         m_desired_speed = nearest_veh.speed() * 0.75;
@@ -396,3 +390,37 @@ bool Planner::collision_with_vehicle(double ego_s, double ego_d) {
 
   return false;
 }
+
+int Planner::check_for_ideal_lane() {
+  Vehicle             lane_vehicle;
+  std::vector<int>    empty_lanes;
+  std::vector<double> lane_speeds;
+
+  // check for vehicles in the lanes
+  for (int idx = 0; idx < Map::NUM_LANES; ++idx) {
+    double nearest = check_nearest_vehicle_up_front(m_last_ego.s(), idx, lane_vehicle);
+
+    if (nearest < 40) {
+      lane_speeds.push_back(lane_vehicle.speed());
+    } else {
+      lane_speeds.push_back(SPEED_LIMIT);
+      empty_lanes.push_back(idx);
+    }
+  }
+
+  // prefer empty lanes
+  if (!empty_lanes.empty()) {
+    // prefer center lane if available
+    if (std::find(empty_lanes.begin(), empty_lanes.end(), 1) != empty_lanes.end())
+      return 1;
+    else if (std::find(empty_lanes.begin(), empty_lanes.end(), m_current_lane) != empty_lanes.end())
+      return m_current_lane;
+    else
+      return empty_lanes[0];
+  }
+
+  // return lane with highest possible speed
+  auto fastest = std::max_element(lane_speeds.begin(), lane_speeds.end());
+  return std::distance(lane_speeds.begin(), fastest);
+}
+

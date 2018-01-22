@@ -46,7 +46,7 @@ class Planner {
 
     void process_state();
     void change_state(int p_new_state);
-    bool try_changing_lane();
+    bool try_changing_lane(int lane);
 
     void generate_keep_lane_targets();
     void generate_change_lane_targets(int desired_lane);
@@ -57,6 +57,9 @@ class Planner {
     double check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest);
 
     bool collision_with_vehicle(double ego_s, double ego_d);
+
+    int check_for_ideal_lane();
+
   
   // member variables
   private:
