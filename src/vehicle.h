@@ -18,6 +18,7 @@ class Vehicle {
 
     // prediction
     void predict(double delta_t);
+    void update(double s, double d, double speed);
 
   // member variables
   private:

@@ -100,7 +100,7 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   }
 
   // save state of ego at the end of the trajectory
-  m_last_ego = Vehicle(m_frenet_path[np-1].m_s, m_frenet_path[np-1].m_d, m_speeds[np-1]);
+  m_last_ego = m_sim_ego;
 
   // remove targets that are reached in this trajectory
   std::vector<FrenetPoint> m_old_targets = m_targets;
@@ -214,14 +214,13 @@ void Planner::generate_change_lane_targets(int desired_lane) {
 
 bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 
-  Vehicle sim_ego = m_last_ego;
+  m_sim_ego = m_last_ego;
   m_frenet_path.clear();
-  m_speeds.clear();
 
   // create a list of control points for the spline
   std::vector<double> control_s = {
     m_last_target.m_s,
-    sim_ego.s(),
+    m_sim_ego.s(),
     m_targets[0].m_s,
     m_targets[1].m_s,
     m_targets[1].m_s + 30,
@@ -229,7 +228,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 
   std::vector<double> control_d = {
     m_last_target.m_d,
-    sim_ego.d(),
+    m_sim_ego.d(),
     m_targets[0].m_d,
     m_targets[1].m_d,
     m_targets[1].m_d,
@@ -251,7 +250,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 	double car_s = 0.0;
   double map_s = m_last_ego.s();
 
-  double cur_speed = sim_ego.speed();
+  double cur_speed = m_last_ego.speed();
 
   for (double t=0.0; t < delta_t; t += TIMESTEP) {
 
@@ -291,7 +290,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 
       // store path
       m_frenet_path.push_back({map_s, new_d});
-      m_speeds.push_back(cur_speed);
+      m_sim_ego.update(map_s, new_d, cur_speed);
   }
 
   return true;
