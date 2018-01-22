@@ -108,10 +108,10 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
     generate_keep_lane_targets();
   }
 
-  generate_trajectory(1.0, false);
-
-  // copy the needed part of the trajectory to the output
+  // generate the final trajectory
   int np = TRAJECTORY_POINTS - trajectory[0].size();
+
+  generate_trajectory(np * TIMESTEP, false);
 
   for (int idx = 0; idx < np; ++idx) {
     auto xy = m_map.getXY(m_frenet_path[idx].m_s, m_frenet_path[idx].m_d);
@@ -122,9 +122,6 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   }
 
   // save state of ego at the end of the trajectory
-  int p1 = trajectory[0].size() - 1;
-  int p2 = p1 - 1;
-
   m_last_ego = Vehicle(m_frenet_path[np-1].m_s, m_frenet_path[np-1].m_d, m_speeds[np-1]);
 
   // remove targets that are reached in this trajectory
