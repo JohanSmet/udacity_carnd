@@ -15,19 +15,19 @@ const char *STATE_NAMES[] = {
   "changing_lane"
 };
 
-double transform_s_map_to_car(const Vehicle &car, double map_s) {
-  double car_s = map_s - car.s();
+double transform_s_map_to_car(double car_s, double map_s) {
+  double delta_s = map_s - car_s;
 
-  if (car_s > (Map::max_s / 2.0))
-    car_s -= Map::max_s;
-  else if (car_s < -(Map::max_s / 2.0))
-    car_s += Map::max_s;
+  if (delta_s > (Map::max_s / 2.0))
+    delta_s -= Map::max_s;
+  else if (delta_s < -(Map::max_s / 2.0))
+    delta_s += Map::max_s;
 
-  return car_s;
+  return delta_s;
 }
 
-double transform_s_car_to_map(const Vehicle &car, double car_s) {
-  double map_s = fmod(car_s + car.s(), Map::max_s);
+double transform_s_car_to_map(double car_s, double delta_s) {
+  double map_s = fmod(delta_s + car_s, Map::max_s);
   return map_s;
 }
 
@@ -129,7 +129,7 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
   m_targets.clear();
 
   for (auto target : m_old_targets) {
-    if (transform_s_map_to_car(m_last_ego, target.m_s) > 0) {
+    if (distance_in_lane(m_last_ego.s(), target.m_s) > 0) {
       m_targets.push_back(target);
     } else {
       m_last_target = target;
@@ -289,7 +289,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 
   // transfrom the control points to be relative to the car (to avoid wrapping problems)
   for (auto &c : control_s) {
-    c = transform_s_map_to_car(m_last_ego, c);
+    c = transform_s_map_to_car(m_last_ego.s(), c);
   }
 
   // fit a spline to the control points
@@ -333,7 +333,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
       // calculate position after this timestep
       double n = target_dist / (TIMESTEP * cur_speed);
 			car_s = car_s + (target_s / n);
-      map_s = transform_s_car_to_map(m_last_ego, car_s);
+      map_s = transform_s_car_to_map(m_last_ego.s(), car_s);
 			double new_d = path(car_s);
 
       // check for collisions
@@ -351,7 +351,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
 }
 
 double Planner::distance_in_lane(double ego_s, double veh_s) {
-  return veh_s - ego_s;
+  return transform_s_map_to_car(ego_s, veh_s);
 }
 
 double Planner::check_nearest_vehicle_up_front(double ego_s, Vehicle &nearest) {
