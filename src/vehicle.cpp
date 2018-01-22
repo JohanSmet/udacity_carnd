@@ -27,3 +27,9 @@ void Vehicle::predict(double delta_t) {
   // assume linear velocity along the current lane
   m_s += delta_t * m_speed;
 }
+
+void Vehicle::update(double s, double d, double speed) {
+  m_s = s;
+  m_d = d;
+  m_speed = speed;
+}

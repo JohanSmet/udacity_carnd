@@ -69,7 +69,9 @@ class Planner {
     std::vector<std::vector<Vehicle>>   m_lane_vehicles;
     std::vector<FrenetPoint>  m_targets;
     FrenetPoint               m_last_target;
+
     Vehicle                   m_last_ego;
+    Vehicle                   m_sim_ego;
 
     int m_state;
     double m_state_time;
@@ -78,8 +80,6 @@ class Planner {
     double m_desired_speed;
 
     std::vector<FrenetPoint> m_frenet_path;
-    std::vector<double>      m_speeds;
-
 };
 
 
