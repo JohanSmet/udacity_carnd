@@ -1,7 +1,6 @@
 #include "planner.h"
 #include "spline.h"
 
-#include <iostream>
 #include <algorithm>
 
 namespace {
@@ -32,28 +31,6 @@ double transform_s_car_to_map(double car_s, double delta_s) {
   return map_s;
 }
 
-/*void transform_map_to_car(const Vehicle &car,
-                          double map_x, double map_y,
-                          double &car_x, double &car_y) {
-  auto cos_yaw = cos(-car.yaw());
-  auto sin_yaw = sin(-car.yaw());
-  auto dx = map_x - car.x();
-  auto dy = map_y - car.y();
-
-  car_x = (dx * cos_yaw) - (dy * sin_yaw);
-  car_y = (dx * sin_yaw) + (dy * cos_yaw);
-}
-
-void transform_car_to_map(const Vehicle &car,
-                          double car_x, double car_y,
-                          double &map_x, double &map_y) {
-	auto cos_yaw = cos(car.yaw());
-	auto sin_yaw = sin(car.yaw());
-
-  map_x = (car_x * cos_yaw) - (car_y * sin_yaw) + car.x();
-	map_y = (car_x * sin_yaw) + (car_y * cos_yaw) + car.y();
-}
- */
 } // unnamed namespace
 
 Planner::Planner(const Map &map) : m_map(map),
@@ -62,7 +39,7 @@ Planner::Planner(const Map &map) : m_map(map),
   m_state_time = 0;
   m_current_lane = 1;
   m_desired_lane = 1;
-  m_desired_speed = SPEED_LIMIT * 0.9;
+  m_desired_speed = TARGET_SPEED;
 }
 
 void Planner::vehicles_reset() {
@@ -136,23 +113,9 @@ void Planner::create_trajectory(Vehicle ego, std::vector<std::vector<double>> &t
       m_last_target = target;
     }
   }
-
-  std::cout << "Ego-s = " << m_last_ego.s()
-            << " Ego-d = " << m_last_ego.d()
-            << " current lane = " << m_current_lane
-            << " desired lane = " << m_desired_lane
-            << std::endl;
 }
 
-/*void Planner::reset_simulation() {
-
-  for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
-    m_lane_vehicles[lane] = m_lane_vehicles_org[lane];
-  }
-}*/
-
 void Planner::predict_vehicles(double delta_t) {
-
   for (int lane = 0; lane < Map::NUM_LANES; ++lane) {
     for (auto &veh : m_lane_vehicles[lane]) {
       veh.predict(delta_t);
@@ -184,23 +147,13 @@ void Planner::process_state() {
         m_current_lane = m_desired_lane;
         change_state(STATE_KEEP_LANE);
       }
-
+      break;
   }
-
 }
 
 void Planner::change_state(int p_new_state) {
-  std::cout << "****************************************************************" << std::endl;
-  std::cout << "****************************************************************" << std::endl;
-  std::cout << "STATE CHANGE from " << STATE_NAMES[m_state]
-            << " to " << STATE_NAMES[p_new_state]
-            << std::endl;
-  std::cout << "****************************************************************" << std::endl;
-  std::cout << "****************************************************************" << std::endl;
-
   m_state = p_new_state;
   m_state_time = 0;
-
 }
 
 bool Planner::try_changing_lane(int lane) {
@@ -251,6 +204,7 @@ void Planner::generate_change_lane_targets(int desired_lane) {
 
   m_targets.clear();
 
+  // sharpness of turn depends on the current speed
   double delta = (m_last_ego.speed() > mph_to_mps(40)) ? 20 : 15;
 
   auto target_d = m_map.lane_center(desired_lane);
@@ -314,7 +268,7 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
       } else if (nearest_front < 16) {
         m_desired_speed = nearest_veh.speed();
       } else {
-        m_desired_speed = SPEED_LIMIT * 0.95;
+        m_desired_speed = TARGET_SPEED;
       }
 
       // update speed
@@ -341,23 +295,10 @@ bool Planner::generate_trajectory(double delta_t, bool check_collision) {
   }
 
   return true;
-
 }
 
 double Planner::distance_in_lane(double ego_s, double veh_s) {
   return transform_s_map_to_car(ego_s, veh_s);
-}
-
-double Planner::check_nearest_vehicle_up_front(double ego_s, Vehicle &nearest) {
-
-  double current = check_nearest_vehicle_up_front(ego_s, m_current_lane, nearest);
-
-  if (m_desired_lane != m_current_lane) {
-    double desired = check_nearest_vehicle_up_front(ego_s, m_desired_lane, nearest);
-    return (std::min(current, desired));
-  }
-
-  return current;
 }
 
 double Planner::check_nearest_vehicle_up_front(double ego_s, int lane, Vehicle &nearest) {
@@ -400,7 +341,7 @@ int Planner::check_for_ideal_lane() {
   for (int idx = 0; idx < Map::NUM_LANES; ++idx) {
     double nearest = check_nearest_vehicle_up_front(m_last_ego.s(), idx, lane_vehicle);
 
-    if (nearest < 40) {
+    if (nearest < LANE_LOOKAHEAD) {
       lane_speeds.push_back(lane_vehicle.speed());
     } else {
       lane_speeds.push_back(SPEED_LIMIT);
