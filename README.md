@@ -1,5 +1,83 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
+
+[//]: # (Image References)
+
+[image1]: ./example.png "Project Example"
+
+## Introduction
+This is my implementation of the Path Planning project for the Udacity Self-Driving Car Nanodegree. This proved to be a challenging, but fun, project to implement.
+
+## Discussion of rubric points
+
+### Compilation
+#### 1. The code compiles correctly.
+The project was developed and tested on a Debian 9.1 (stretch) machine with Gcc 6.3.0. It compiles cleanly.
+
+The original CMakeLists.txt was changed slightly because the implementation uses multiple .cpp files. All map-related code was moved to map.cpp/h. The bulk of the implementation is in planner.cpp/h, with a bit of vehicle abstraction code in vehicle.cpp/h.
+
+### Valid trajectories
+#### 1. The car is able to drive at least 4.32 miles without incident.
+I've had multiple instances of the car drive 4+ laps around the track with incident. 
+
+![alt text][image1]
+
+The screenshot above comes from this exciting 30+ minute [YouTube Video](https://www.youtube.com/watch?v=Vki4USDME0E).
+
+Occasionally the car cannot avoid an incident but often this an exceptional situation that could not be avoided without exceeding the maximum allowed acceleration or jerk by executing a emergency stop. An example of this would be a collision on the other side of the road and one of the cars getting catapulted right in front of the ego car. Unfortunately I don't have a screen capture.
+
+These incidents happen so infrequently that is hard to develop and test a solution without a heavily improved version of the simulator.
+
+#### 2. The car drives according to the speed limit.
+When not obstructed by traffic the car tries to drive at 0.95 times the speed limit (47.5 mph). When the car gets to close to a leading vehicle in the same lane it changes speed to keep a safe distance.
+
+#### 3. Max acceleration and jerk are not Exceeded.
+Maximum acceleration is fixed at 5 m/s². The trajectory of the car is smoothed using a cubic spline and it should never exceed the maximum allowed jerk.
+
+#### 4. Car does not have collisions.
+The car slows down to maintain a safe distance to a leading car. When looking to change lanes the proposed trajectory is checked for possible collisions in the near future. Trajectories with possible collisions are not taken.
+
+#### 5. The car stays in its lane, except for the time between changing lanes.
+The car does its best to always drive in the center of the lanes (d=2, 6 or 10). The trajectory of a lane change should never take more than 3 seconds to complete.
+
+However, there is (at least) one point on the track when the car is driving in the center of the right lane (d=10) but it is still reported as "Outside of Lane". I tried multiple ways of interpolating the waypoints but they all lead to the same problem. The YouTube video linked below is an example of this situation. Visually I can not detect the car leaving the lane...
+
+[![Outside of Lane](https://img.youtube.com/vi/4DbbwSiFpGk/0.jpg)](https://www.youtube.com/watch?v=4DbbwSiFpGk)
+
+#### 6. The car is able to change lanes.
+The car tries to drive in the fastest lane possible. It checks upcoming traffic (for about 40m) and chooses the most desirable lane: if possible one without a car in that segment, else the one with the fastest moving car. If possible a lane change operation is then executed towards that lane.
+
+Most of the time this algorithm allows the car to avoid being slowed down by traffic up ahead and change lanes without losing too much speed.
+
+### Reflection
+
+#### 1. There is a reflection on how to generate paths.
+The code for the path generations can be found in planner.cpp and planner.h.
+
+The car sets two targets waypoints ahead of the car. When a target waypoints is passed it's removed from the list and a new one further on the track is added to the list. A spline is fitted to the last passed waypoint, the ego car, and the two future waypoints. This results in a smooth path.
+
+The planner always gives 50 points to the simulator and reuses the previous point given back by the simulator to ensure the temporal smoothness of the path.
+
+The future position of the detected vehicles on the road is predicted every timestep of the generated path. The ego car tries to maintain a safe distance between the leading car in its lane.
+
+Every time a target waypoint is reached the car also checks if it is driving in the best lane. If not it tries to change to that lane, taking a 5 second cooldown between lane changes in account. To execute a lane change new target waypoints are created with the d-value of the desired lane. This path is checked for collision with any other vehicle for the next 5 seconds. Only when no potential collision are detected is the lane change executed.
+
+A simple state machine is used to control the behavior of the car. It has three states:
+- startup: no lane changes are allowed when startup up the simulation to allow the car to reach a decent velocity
+- keep lane : keep driving in the same lane and check regularly if a lane change is desirable.
+- changing lane : during lane changes
+
+### Future work
+Although I feel the current implementation is sufficient to pass, I can see several potential improvement.
+1. The "density" of the s coordinate doesn't seem the same along the entire track, especially in the far corners of the track. This leads to the car not driving at a constant velocity. Switching back to cartesian coordinates sooner could improve this but this leads to more complexity in the rest of the implementation (ie. collision detection).
+2. The decision functions of the FSM are just some conditional logic. Changing to properly tuned cost functions would allow for better situational awareness.
+3. The car drives around the track somewhat like a jerk. It stays in the left or center lanes when there is no one in the right lane and passes other cars on the right side at full speed. The FSM should be improved to minimize this behavior. But in the car's defense, the other cars in the simulator exhibit the same driving style with no apparent remorse.
+
+
+---
+Original README.md follows below:
+
+---
    
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
