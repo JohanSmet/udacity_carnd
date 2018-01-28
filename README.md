@@ -1,4 +1,36 @@
 # Semantic Segmentation
+
+### Introduction
+In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
+
+### Approach
+The model starts with a pre-trained VGG-16 converted to a fully convolutional network by converting the fully connected layers to a convolution with a 1x1 kernel to keep spatial information. The model is extended as described in the [FCN-8 paper](https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf). This adds multiple transpose convolutions to increase the size of the image and some skip-connections between non-adjacent layers to improve performance.
+
+Cross-entropy is used as loss-function for the network in conjunction with a Adam optimizer. Kernel initializers and l2-regularizers are added to the layers of the decoder to prevent overfitting.
+
+### Training
+The hyperparameters used for training were:
+- a keep probability of 80%
+- a learning rate of 0.0005
+- a batch size of 5
+
+The network was trained for 50 epochs, with the training loss mostly decreasing throughout the session. Output from the training session can be view [here](samples/training_output.txt).
+
+### Results
+Performance of the network is good but not perfect. On average a small percentage of the visible road is not identified and parts of objects close to the road are sometimes mistakenly identified as road. Some sample images are included below, the parts of the image identified as road by the network are overlayed in green.
+
+![sample1](samples/sample_01.png)
+![sample2](samples/sample_02.png)
+![sample3](samples/sample_03.png)
+![sample4](samples/sample_04.png)
+![sample5](samples/sample_05.png)
+![sample6](samples/sample_06.png)
+
+---
+Original README.md reproduced below
+
+---
+
 ### Introduction
 In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
 
