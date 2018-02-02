@@ -11,6 +11,11 @@ import tf
 import cv2
 import yaml
 
+from scipy.spatial.kdtree import KDTree
+import tf.transformations
+import numpy as np
+import math
+
 STATE_COUNT_THRESHOLD = 3
 
 class TLDetector(object):
@@ -57,6 +62,10 @@ class TLDetector(object):
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
 
+        # build a KDtree for efficient nearest point lookup
+        data = list(map(lambda w : [w.pose.pose.position.x, w.pose.pose.position.y], self.waypoints.waypoints))
+        self.kdtree_wp = KDTree(data)
+
     def traffic_cb(self, msg):
         self.lights = msg.lights
 
@@ -100,8 +109,8 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        _, n = self.kdtree_wp.query(np.array([[pose.position.x, pose.position.y]]))
+        return n[0]
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -119,8 +128,37 @@ class TLDetector(object):
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
+        # return ground truth for now
+        return light.state
+
         #Get classification
         return self.light_classifier.get_classification(cv_image)
+
+    def nearest_visible_traffic_light(self, dist_limit):
+        ros_np = lambda o: [o.x, o.y, o.z, o.w]
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+
+        yaw_car, _, _ = tf.transformations.euler_from_quaternion(ros_np(self.pose.pose.orientation))
+
+        dist_min = dist_limit
+        nearest_tf = None
+
+        for light in self.lights:
+            # check if light in front of car
+            yaw_tl = math.atan2(light.pose.pose.position.y - self.pose.pose.position.y,
+                                light.pose.pose.position.x - self.pose.pose.position.x)
+
+            angle = math.fabs(yaw_car - yaw_tl)
+            angle = min(2 * math.pi - angle, angle)
+
+            if (angle < math.pi / 4.0):
+                dist = dl(self.pose.pose.position, light.pose.pose.position)
+
+                if (dist < dist_min):
+                    dist_min = dist
+                    nearest_tf = light
+        
+        return nearest_tf
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -137,13 +175,16 @@ class TLDetector(object):
         stop_line_positions = self.config['stop_line_positions']
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
+            rospy.loginfo('car_position = {}'.format(car_position))
 
-        #TODO find the closest visible traffic light (if one exists)
+            light = self.nearest_visible_traffic_light(100)
 
         if light:
+            light_wp = self.get_closest_waypoint(light.pose.pose)
             state = self.get_light_state(light)
+            rospy.loginfo('nearest light at waypoint {} - state = {}'.format(light_wp, state))
             return light_wp, state
-        self.waypoints = None
+
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
