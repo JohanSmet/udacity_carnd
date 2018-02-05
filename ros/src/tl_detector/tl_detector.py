@@ -175,8 +175,6 @@ class TLDetector(object):
         stop_line_positions = self.config['stop_line_positions']
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
-            rospy.loginfo('car_position = {}'.format(car_position))
-
             light = self.nearest_visible_traffic_light(100)
 
         if light:
