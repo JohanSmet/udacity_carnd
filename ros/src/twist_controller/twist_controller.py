@@ -16,9 +16,13 @@ class Controller(object):
                                             kwargs['max_lat_accel'],
                                             kwargs['max_steer_angle'])
 
+        self.vehicle_mass = kwargs['vehicle_mass']
+        self.fuel_capacity = kwargs['fuel_capacity']
+        self.wheel_radius = kwargs['wheel_radius']
+
         # these need to be tuned
-        self.pid_steering = PID(1, 0., 0.)
-        self.pid_throttle = PID(1, 0., 0., 0, 1)
+        self.pid_steering = PID(5., 0., 0.)
+        self.pid_throttle = PID(2., 1., 0., -1, 1)
 
         self.dbw_enabled = False
         
@@ -50,5 +54,9 @@ class Controller(object):
     def control_velocity(self, req_vel_linear, cur_vel_linear):
         throttle = self.pid_throttle.step(req_vel_linear - cur_vel_linear, 1)
         brake = 0
+
+        if throttle < 0:
+            brake = -(self.vehicle_mass + (self.fuel_capacity * GAS_DENSITY)) * throttle * self.wheel_radius
+            throttle = 0
         return throttle, brake
 
