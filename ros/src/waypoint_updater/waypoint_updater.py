@@ -23,7 +23,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-ACCELERATION = 1
+ACCELERATION = 0.5
 
 
 class WaypointUpdater(object):
@@ -59,8 +59,7 @@ class WaypointUpdater(object):
         # get the next waypoint up ahead the car
         wp_idx = self.next_waypoint(self.pose.position, self.pose.orientation)
 
-        # build list of upcoming waypoints, set desired speed based on current speed of vehicle
-        #   (e.g. could be accelerating after stopping at a traffic light)
+        # build list of upcoming waypoints
         final_waypoints = Lane()
         final_waypoints.header.stamp = rospy.Time.now()
 
@@ -73,19 +72,21 @@ class WaypointUpdater(object):
 
         # stop at red traffic lights
         if self.tl_waypoint >= wp_idx and self.tl_waypoint < wp_idx + LOOKAHEAD_WPS:
-            idx = self.tl_waypoint - wp_idx
-            self.set_waypoint_velocity(final_waypoints.waypoints, idx, 0)
+            stop_idx = max(self.tl_waypoint - wp_idx - 2, 0)
 
-            prev_pos = final_waypoints.waypoints[idx].pose.pose.position
+            for i in range(stop_idx, LOOKAHEAD_WPS):
+                self.set_waypoint_velocity(final_waypoints.waypoints, i, 0)
+
+            prev_pos = final_waypoints.waypoints[stop_idx].pose.pose.position
             vel = 0
 
-            idx = idx - 1
-            while idx > 0:
-                dist = self.distance_points(prev_pos, final_waypoints.waypoints[idx].pose.pose.position)
+            stop_idx = stop_idx - 1
+            while stop_idx >= 0:
+                dist = self.distance_points(prev_pos, final_waypoints.waypoints[stop_idx].pose.pose.position)
                 vel = math.sqrt(vel**2 + (2 * ACCELERATION * dist))
-                vel = min(vel, self.get_waypoint_velocity(final_waypoints.waypoints[idx]))
-                self.set_waypoint_velocity(final_waypoints.waypoints, idx, vel)
-                idx = idx - 1
+                vel = min(vel, self.get_waypoint_velocity(final_waypoints.waypoints[stop_idx]))
+                self.set_waypoint_velocity(final_waypoints.waypoints, stop_idx, vel)
+                stop_idx = stop_idx - 1
 
         # publish
         self.final_waypoints_pub.publish(final_waypoints)
