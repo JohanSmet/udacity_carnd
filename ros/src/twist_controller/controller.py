@@ -5,7 +5,6 @@ ONE_MPH = 0.44704
 from pid import PID
 from yaw_controller import YawController
 from lowpass import LowPassFilter
-import math
 
 # Note: how to tune the gains of the PID controllers at runtime
 # - the gains can be changed at runtime using the ROS dynamic_reconfigure package
@@ -85,7 +84,7 @@ class Controller(object):
             throttle = value
             brake = 0.0
         # brake if the negative value of the PID-controller is outside of the brake-deadband
-        elif math.fabs(value) > self.brake_deadband:
+        elif abs(value) > self.brake_deadband:
             throttle = 0.0
             brake = (self.vehicle_mass + (self.fuel_capacity * GAS_DENSITY)) * -value * self.wheel_radius
         else:
