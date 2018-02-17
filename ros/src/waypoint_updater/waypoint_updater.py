@@ -6,7 +6,6 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
 import math
-import copy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -41,7 +40,6 @@ class WaypointUpdater(object):
 
         # TODO: Add other member variables you need below
         self.base_waypoints = []
-        self.cruising_speed = self.kph2mps(rospy.get_param('~/waypoint_loader/velocity', 45.0))
         self.tl_waypoint = -1
         self.pose = None
 
@@ -64,10 +62,14 @@ class WaypointUpdater(object):
         # build list of upcoming waypoints, set desired speed based on current speed of vehicle
         #   (e.g. could be accelerating after stopping at a traffic light)
         final_waypoints = Lane()
+        final_waypoints.header.stamp = rospy.Time.now()
 
         for idx in range(wp_idx, min(wp_idx + LOOKAHEAD_WPS, len(self.base_waypoints))):
-            self.set_waypoint_velocity(self.base_waypoints, idx, self.cruising_speed)
-            final_waypoints.waypoints.append(self.base_waypoints[idx])
+            wp = Waypoint()
+            wp.pose.pose.position.x = self.base_waypoints[idx].pose.pose.position.x
+            wp.pose.pose.position.y = self.base_waypoints[idx].pose.pose.position.y
+            wp.twist.twist.linear.x = self.base_waypoints[idx].twist.twist.linear.x
+            final_waypoints.waypoints.append(wp)
 
         # stop at red traffic lights
         if self.tl_waypoint >= wp_idx and self.tl_waypoint < wp_idx + LOOKAHEAD_WPS:
