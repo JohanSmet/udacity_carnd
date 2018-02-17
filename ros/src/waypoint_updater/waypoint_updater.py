@@ -6,7 +6,6 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
 import math
-import tf.transformations
 import copy
 
 '''
@@ -145,7 +144,10 @@ class WaypointUpdater(object):
         closest_wp = self.closest_waypoint(position)
         position_wp = self.base_waypoints[closest_wp].pose.pose.position
 
-        heading_car, _, _ = tf.transformations.euler_from_quaternion(ros_np(orientation))
+        # use the axis/angle formula to get a heading from the quaternion 
+        #   (assuming the axis always point straight up)
+        heading_car = math.acos(orientation.w)
+
         heading_wp = math.atan2(position_wp.y - position.y, position_wp.x - position.x)
         
         angle = math.fabs(heading_car - heading_wp)
