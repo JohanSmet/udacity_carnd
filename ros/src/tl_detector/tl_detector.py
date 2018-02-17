@@ -164,7 +164,7 @@ class TLDetector(object):
         car_wp = self.get_closest_waypoint(self.pose.position.x, self.pose.position.y)
 
         # find the next stop light
-        min_dist = 200
+        min_dist = 300
         next_light = None
 
         for idx, wp in enumerate(self.wp_lights):
