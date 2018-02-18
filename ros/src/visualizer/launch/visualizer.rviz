@@ -66,10 +66,10 @@ Visualization Manager:
       Color: 0; 85; 255
       Enabled: true
       Head Length: 10
-      Head Radius: 5
+      Head Radius: 4
       Name: Car
-      Shaft Length: 10
-      Shaft Radius: 10
+      Shaft Length: 2
+      Shaft Radius: 15
       Shape: Arrow
       Topic: /current_pose
       Unreliable: false
