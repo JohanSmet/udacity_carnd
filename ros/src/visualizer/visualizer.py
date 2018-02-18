@@ -3,7 +3,7 @@
 import rospy
 import yaml
 
-from styx_msgs.msg import Lane, Waypoint
+from styx_msgs.msg import Lane, Waypoint, TrafficLightArray, TrafficLight
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped, TwistStamped, Point, Vector3
 from visualization_msgs.msg import MarkerArray, Marker
@@ -19,11 +19,13 @@ class Visualizer(object):
         # subscribers
         rospy.Subscriber('/base_waypoints', Lane, self.cb_base_waypoints, queue_size=1)
         rospy.Subscriber('/final_waypoints', Lane, self.cb_final_waypoints, queue_size=1)
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.cb_traffic_lights, queue_size=1)
 
         # publish for visualization by rviz
         self.pub_track = rospy.Publisher('/visualizer/track', Path, queue_size=1, latch=True)
         self.pub_path = rospy.Publisher('/visualizer/path', MarkerArray, queue_size=1)
         self.pub_stop_lines = rospy.Publisher('/visualizer/stop_lines', Marker, queue_size=1, latch=True)
+        self.pub_traffic_lights = rospy.Publisher('/visualizer/traffic_lights', MarkerArray, queue_size=1)
 
         # some variables
         self.path = MarkerArray()
@@ -64,6 +66,22 @@ class Visualizer(object):
 
         for idx, wp in enumerate(msg.waypoints):
             self.path.markers.append(self.marker_path(idx, wp.pose.pose.position, wp.twist.twist.linear.x))
+
+    def cb_traffic_lights(self, msg):
+        tl_markers = MarkerArray()
+
+        for idx, light in enumerate(msg.lights):
+            tl = self.marker_traffic_light(idx, light.state)
+
+            # position the marker next to the track
+            wp = self.track_nearest_waypoint(light.pose.pose.position.x, light.pose.pose.position.y)
+            n_x, n_y = self.track_normal_vector(wp)
+            tl.pose.position.x = light.pose.pose.position.x - n_x * 15
+            tl.pose.position.y = light.pose.pose.position.y - n_y * 15
+
+            tl_markers.markers.append(tl)
+
+        self.pub_traffic_lights.publish(tl_markers)
 
     def publish_stop_lines(self):
         # load the locations of the stop lines from the ros-param
@@ -139,6 +157,23 @@ class Visualizer(object):
         marker.color.a = 1.0
 
         return marker
+
+    def marker_traffic_light(self, id, state):
+        marker = Marker()
+        marker.header.frame_id = "world"
+        marker.ns = "traffic_lights"
+        marker.id = id
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+
+        marker.scale = Vector3(10.0, 10.0, 10.0)
+
+        marker.color.r = 1.0 if state == TrafficLight.RED or state == TrafficLight.YELLOW else 0.0
+        marker.color.g = 1.0 if state == TrafficLight.GREEN or state == TrafficLight.YELLOW else 0.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        return marker
+
 
     def track_nearest_waypoint(self, x, y):
         _, n = self.kdtree_wp.query(np.array([[x, y]]))
