@@ -9,6 +9,8 @@ Panels:
         - /Track1
         - /Car1
         - /FinalWaypoints1
+        - /StopLines1
+        - /StopLines1/Namespaces1
       Splitter Ratio: 0.49444443
     Tree Height: 986
   - Class: rviz/Selection
@@ -80,6 +82,14 @@ Visualization Manager:
         path: true
       Queue Size: 100
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /visualizer/stop_lines
+      Name: StopLines
+      Namespaces:
+        stop_lines: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -104,7 +114,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0
+      Angle: 0.0149999997
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
@@ -114,11 +124,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 28.0108261
+      Scale: 1.08030105
       Target Frame: world
       Value: TopDownOrtho (rviz)
-      X: 1168.76648
-      Y: 1184.58484
+      X: 1333.78882
+      Y: 1177.97009
     Saved:
       - Angle: 0
         Class: rviz/TopDownOrtho
