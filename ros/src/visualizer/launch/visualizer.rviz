@@ -11,6 +11,7 @@ Panels:
         - /FinalWaypoints1
         - /StopLines1
         - /StopLines1/Namespaces1
+        - /TrafficLights1
       Splitter Ratio: 0.49444443
     Tree Height: 986
   - Class: rviz/Selection
@@ -90,6 +91,14 @@ Visualization Manager:
         stop_lines: true
       Queue Size: 100
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /visualizer/traffic_lights
+      Name: TrafficLights
+      Namespaces:
+        traffic_lights: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -124,11 +133,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 1.08030105
+      Scale: 0.558863819
       Target Frame: world
       Value: TopDownOrtho (rviz)
-      X: 1333.78882
-      Y: 1177.97009
+      X: 1217.60669
+      Y: 2051.53027
     Saved:
       - Angle: 0
         Class: rviz/TopDownOrtho
