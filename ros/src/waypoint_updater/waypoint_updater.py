@@ -72,7 +72,9 @@ class WaypointUpdater(object):
 
         # stop at red traffic lights
         if self.tl_waypoint >= wp_idx and self.tl_waypoint < wp_idx + LOOKAHEAD_WPS:
-            stop_idx = max(self.tl_waypoint - wp_idx - 2, 0)
+            # the center of the car should stop a few meters before the stop-line
+            stop_wp = self.earlier_waypoint(self.tl_waypoint, 3)
+            stop_idx = max(stop_wp - wp_idx, 0)
 
             for i in range(stop_idx, LOOKAHEAD_WPS):
                 self.set_waypoint_velocity(final_waypoints.waypoints, i, 0)
@@ -124,6 +126,9 @@ class WaypointUpdater(object):
     def distance_points(self, p1, p2):
         return math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2  + (p1.z-p2.z)**2)
 
+    def distance_waypoints(self, wp1, wp2):
+        return self.distance_points(wp1.pose.pose.position, wp2.pose.pose.position)
+
     def kph2mps(self, kph):
         return kph / 3.6
     
@@ -160,6 +165,17 @@ class WaypointUpdater(object):
             closest_wp = (closest_wp + 1) % len(self.base_waypoints)
         
         return closest_wp
+
+    def earlier_waypoint(self, wp, target_dist):
+        result_wp = wp
+        dist = 0
+
+        while target_dist > dist:
+            prev_wp = result_wp
+            result_wp = (result_wp - 1) % len(self.base_waypoints)
+            dist += self.distance_waypoints(self.base_waypoints[prev_wp], self.base_waypoints[result_wp])
+
+        return result_wp
 
 
 
