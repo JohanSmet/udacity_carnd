@@ -17,6 +17,7 @@ import numpy as np
 import math
 
 STATE_COUNT_THRESHOLD = 3
+USE_GROUNDTRUTH = False
 
 class TLDetector(object):
     def __init__(self):
@@ -130,11 +131,10 @@ class TLDetector(object):
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        # return ground truth for now
-        return light.state
-
-        #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        if USE_GROUNDTRUTH:
+            return light.state
+        else:
+            return self.light_classifier.get_classification(cv_image)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -164,7 +164,7 @@ class TLDetector(object):
         car_wp = self.get_closest_waypoint(self.pose.position.x, self.pose.position.y)
 
         # find the next stop light
-        min_dist = 300
+        min_dist = 200
         next_light = None
 
         for idx, wp in enumerate(self.wp_lights):
@@ -177,7 +177,7 @@ class TLDetector(object):
         if next_light is not None:
             ret_state = self.get_light_state(self.lights[next_light])
             ret_index = self.wp_stop_lines[next_light]
-            rospy.loginfo('nearest light at waypoint {} - state = {} - car at {}'.format(ret_index, ret_state, car_wp))
+            # rospy.loginfo('nearest light at waypoint {} - state = {} - car at {}'.format(ret_index, ret_state, car_wp))
 
         return ret_index, ret_state
 
