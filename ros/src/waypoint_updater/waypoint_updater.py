@@ -23,7 +23,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-ACCELERATION = 0.5
+ACCELERATION = 0.25
 
 
 class WaypointUpdater(object):
@@ -71,7 +71,7 @@ class WaypointUpdater(object):
             final_waypoints.waypoints.append(wp)
 
         # stop at red traffic lights
-        if self.tl_waypoint >= wp_idx and self.tl_waypoint < wp_idx + LOOKAHEAD_WPS:
+        if self.tl_waypoint != -1:
             # the center of the car should stop a few meters before the stop-line
             stop_wp = self.earlier_waypoint(self.tl_waypoint, 3)
             stop_idx = max(stop_wp - wp_idx, 0)
