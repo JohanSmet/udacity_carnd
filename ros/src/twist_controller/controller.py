@@ -94,8 +94,8 @@ class Controller(object):
         # do not throttle if the requested linear velocity is very small (e.g. standing still a red light)
         #   Using 1 pid for both throttle and brake is easy but has the side effect does not come to a complete
         #   standstill even if the PID controller is tuned very good
-        if abs(req_vel_linear) < 0.01:
+        if abs(req_vel_linear) < 0.01 and abs(cur_vel_linear) < 0.01:
             throttle = 0
-            brake = (self.vehicle_mass + (self.fuel_capacity * GAS_DENSITY)) * self.wheel_radius
+            brake = max((self.vehicle_mass + (self.fuel_capacity * GAS_DENSITY)) * 0.25 * self.wheel_radius, brake)
 
         return throttle, brake
