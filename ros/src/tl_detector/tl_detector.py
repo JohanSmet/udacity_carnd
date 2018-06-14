@@ -167,7 +167,7 @@ class TLDetector(object):
         min_dist = 200
         next_light = None
 
-        for idx, wp in enumerate(self.wp_lights):
+        for idx, wp in enumerate(self.wp_stop_lines):
             dist = wp - car_wp
             if dist > 0 and dist < min_dist:
                 min_dist = dist
