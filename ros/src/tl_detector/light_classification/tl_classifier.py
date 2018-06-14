@@ -50,13 +50,14 @@ class TLClassifier(object):
         _, scores, classes = self.run_inference(image, 0.60)
 
         # no traffic light detected is reported as "unknown"
-        if len(classes) <= 0:
-            return TrafficLight.UNKNOWN
+        state = 3
+        if len(classes) > 0:
+           state = np.argmax([scores[classes == 1].sum(), scores[classes == 2].sum(), scores[classes == 3].sum()])
 
-        state = np.argmax([scores[classes == 1].sum(), scores[classes == 2].sum(), scores[classes == 3].sum()])
         ts_after = rospy.Time.now()
 
-        if DEBUG == 1: rospy.logwarn('Detected light = {} (duration = {})'.format(NETWORK_TO_LABEL[state], (ts_after - ts_before).to_sec() * 1000))
+        if DEBUG == 1: 
+            rospy.logwarn('Detected light = {} (duration = {})'.format(NETWORK_TO_LABEL[state], (ts_after - ts_before).to_sec() * 1000))
 
         return NETWORK_TO_STATE[state]
 
