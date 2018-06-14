@@ -4,7 +4,9 @@ import tensorflow as tf
 import numpy as np
 import rospy
 
-MODEL_NAME = 'rfcn_trained_simulator'
+#MODEL_NAME = 'mobilenet_trained_simulator'
+#MODEL_NAME = 'rfcn_trained_simulator'
+MODEL_NAME = 'inception_trained_simulator'
 
 NETWORK_TO_STATE = [TrafficLight.RED, TrafficLight.YELLOW, TrafficLight.GREEN, TrafficLight.UNKNOWN]
 NETWORK_TO_LABEL = ['Red', 'Yellow', 'Green', 'Unknown']
