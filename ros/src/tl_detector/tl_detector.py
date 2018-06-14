@@ -177,6 +177,11 @@ class TLDetector(object):
         if next_light is not None:
             ret_state = self.get_light_state(self.lights[next_light])
             ret_index = self.wp_stop_lines[next_light]
+
+            if ret_state == TrafficLight.UNKNOWN and self.last_state <> TrafficLight.UNKNOWN and self.state_count >= 3:
+                ret_state = self.last_state
+                rospy.logwarn('UNKNOWN-detection changed to {}'.format(ret_state))
+
             # rospy.loginfo('nearest light at waypoint {} - state = {} - car at {}'.format(ret_index, ret_state, car_wp))
 
         return ret_index, ret_state
