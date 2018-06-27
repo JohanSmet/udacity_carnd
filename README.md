@@ -1,3 +1,17 @@
+# CarND Capstone project
+
+This repository contains my personal implementation of the capstone project of the Udacity Self-Driving Car Engineer Nanodegree. As suggested by Udacity I also did the the project as part of a team, Team Carla's Quest. You can find the team's repository over [here](https://github.com/bertciccone/CarND-Capstone). For the team's project I was the primary developer for the twist controller and helped out with the traffic light detector.
+
+I also wanted the experience of implementing the other parts, so I did this on the side. Some notes on this implementation:
+- Traffic light detection is done with the TensorFlow Object Detection API. I retrained pre-existing models to distinguish between red, yellow or green lights. I had fantastic results with the R-FCN network, which ran fast enough on a GTX1080 but was too large for GitHub. I switched to a SSD/Inception based network that works well enough but is much smaller.
+- I added a visualization module for RViz that shows the track, the position and state of the car and the state of the traffic lights to help debug the implementation.
+
+Below you'll see a YouTube video of the car completing a lap in the simulator.
+[![Project Video](https://img.youtube.com/vi/OGSJwL5LZiM/0.jpg)](https://www.youtube.com/watch?v=OGSJwL5LZiM)
+
+---
+Original Readme below
+
 This is the project repo for the final project of the Udacity Self-Driving Car Nanodegree: Programming a Real Self-Driving Car. For more information about the project, see the project introduction [here](https://classroom.udacity.com/nanodegrees/nd013/parts/6047fe34-d93c-4f50-8336-b70ef10cb4b2/modules/e1a23b06-329a-4684-a717-ad476f0d8dff/lessons/462c933d-9f24-42d3-8bdc-a08a5fc866e4/concepts/5ab4b122-83e6-436d-850f-9f4d26627fd9).
 
 Please use **one** of the two installation options, either native **or** docker installation.
